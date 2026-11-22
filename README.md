@@ -24,11 +24,25 @@ kubectl -n rollout-recovery rollout status deployment/rollout-web --timeout=110s
 
 The last command should fail. Inspect the new Pod's events with `kubectl -n rollout-recovery describe pod <new-pod-name>` to confirm the image pull failure.
 
-## Recover and clean up
+## Recover and verify
 
 ```sh
 kubectl -n rollout-recovery rollout undo deployment/rollout-web
 kubectl -n rollout-recovery rollout status deployment/rollout-web --timeout=120s
+```
+
+After rollback, verify the expected image and that every desired replica is available. Run the capture and check in the same shell so a failed capture prevents verification.
+
+```sh
+kubectl -n rollout-recovery get deployment rollout-web -o json > deployment-snapshot.json &&
+  python3 rollout_status.py --json --expect-image web nginx:1.28-alpine < deployment-snapshot.json
+```
+
+A recovered deployment reports `"state": "complete"` and exits 0. If the rollout is healthy but the named container is missing or specifies a different image, the check reports `image_mismatch` and exits 4. This verifies the image reference in the Deployment template. Use an image digest when you need immutable version identification.
+
+When finished, remove the example Deployment.
+
+```sh
 kubectl -n rollout-recovery delete deployment rollout-web
 ```
 
@@ -41,4 +55,4 @@ kubectl -n rollout-recovery get deployment rollout-web -o json > deployment-snap
 python3 rollout_status.py < deployment-snapshot.json
 ```
 
-Exit codes are 0 for complete, 1 for waiting, 2 for an exceeded progress deadline, and 3 for invalid input. The check evaluates a single snapshot. Capture a fresh snapshot to check subsequent progress.
+Exit codes are 0 for complete, 1 for waiting, 2 for an exceeded progress deadline, 3 for invalid input, and 4 for an expected image mismatch. The check evaluates a single snapshot. Capture a fresh snapshot to check subsequent progress.
