@@ -30,14 +30,32 @@ def classify(deployment):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--json", action="store_true", help="emit a JSON result on stdout")
+    parser.add_argument(
+        "--expect-image", nargs=2, metavar=("CONTAINER", "IMAGE"),
+        help="verify that a named container uses the expected image after recovery",
+    )
     args = parser.parse_args()
     try:
-        code, message = classify(json.load(sys.stdin))
+        deployment = json.load(sys.stdin)
+        code, message = classify(deployment)
+        if code == 0 and args.expect_image:
+            name, expected = args.expect_image
+            containers = deployment["spec"]["template"]["spec"]["containers"]
+            actual = next(
+                (container["image"] for container in containers if container["name"] == name),
+                None,
+            )
+            if actual != expected:
+                code = 4
+                message = (
+                    f"container {name} is missing" if actual is None
+                    else f"container {name} uses {actual}, expected {expected}"
+                )
     except (ValueError, KeyError, TypeError, AttributeError) as error:
         print(f"invalid Deployment snapshot: {error}", file=sys.stderr)
         return 3
     if args.json:
-        state = {0: "complete", 1: "waiting", 2: "stalled"}[code]
+        state = {0: "complete", 1: "waiting", 2: "stalled", 4: "image_mismatch"}[code]
         print(json.dumps({"state": state, "exit_code": code, "message": message}))
     else:
         print(message)
