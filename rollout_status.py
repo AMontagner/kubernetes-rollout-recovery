@@ -1,4 +1,5 @@
 """Check a Kubernetes Deployment snapshot without cluster access."""
+import argparse
 import json
 import sys
 
@@ -27,12 +28,19 @@ def classify(deployment):
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--json", action="store_true", help="emit a JSON result on stdout")
+    args = parser.parse_args()
     try:
         code, message = classify(json.load(sys.stdin))
     except (ValueError, KeyError, TypeError, AttributeError) as error:
         print(f"invalid Deployment snapshot: {error}", file=sys.stderr)
         return 3
-    print(message)
+    if args.json:
+        state = {0: "complete", 1: "waiting", 2: "stalled"}[code]
+        print(json.dumps({"state": state, "exit_code": code, "message": message}))
+    else:
+        print(message)
     return code
 
 
