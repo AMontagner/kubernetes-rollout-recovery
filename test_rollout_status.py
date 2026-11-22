@@ -10,9 +10,9 @@ CHECKER = Path(__file__).with_name("rollout_status.py")
 
 
 class RolloutStatusCLI(unittest.TestCase):
-    def run_checker(self, snapshot):
+    def run_checker(self, snapshot, *args):
         return subprocess.run(
-            [sys.executable, str(CHECKER)], input=snapshot, text=True,
+            [sys.executable, str(CHECKER), *args], input=snapshot, text=True,
             capture_output=True, timeout=5,
         )
 
@@ -54,3 +54,44 @@ class RolloutStatusCLI(unittest.TestCase):
                 self.assertEqual(result.returncode, 3, result)
                 self.assertEqual(result.stdout, "")
                 self.assertIn("invalid Deployment snapshot", result.stderr)
+
+    def test_verify_rollback_image(self):
+        snapshot = {
+            "kind": "Deployment",
+            "metadata": {"generation": 4},
+            "spec": {
+                "replicas": 1,
+                "template": {"spec": {"containers": [
+                    {"name": "metrics", "image": "metrics:v1"},
+                    {"name": "web", "image": "web:v1"},
+                ]}},
+            },
+            "status": {
+                "observedGeneration": 4,
+                "replicas": 1,
+                "updatedReplicas": 1,
+                "availableReplicas": 1,
+            },
+        }
+        for name, image, code, state, detail in (
+            ("web", "web:v1", 0, "complete", "rollout complete"),
+            ("web", "web:v2", 4, "image_mismatch", "uses web:v1, expected web:v2"),
+            ("worker", "web:v1", 4, "image_mismatch", "container worker is missing"),
+        ):
+            with self.subTest(name=name, image=image):
+                result = self.run_checker(
+                    json.dumps(snapshot), "--expect-image", name, image, "--json"
+                )
+                report = json.loads(result.stdout)
+                self.assertEqual(result.returncode, code, result)
+                self.assertEqual(report["exit_code"], code)
+                self.assertEqual(report["state"], state)
+                self.assertIn(detail, report["message"])
+                self.assertEqual(result.stderr, "")
+
+        snapshot["status"]["availableReplicas"] = 0
+        result = self.run_checker(
+            json.dumps(snapshot), "--expect-image", "web", "web:v2", "--json"
+        )
+        self.assertEqual(result.returncode, 1, result)
+        self.assertEqual(json.loads(result.stdout)["state"], "waiting")
