@@ -3,7 +3,7 @@
   "kind": "Deployment",
   "metadata": {
     "name": "rollout-web",
-    "namespace": "rollout-lab"
+    "namespace": "rollout-recovery"
   },
   "spec": {
     "replicas": 2,
