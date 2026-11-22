@@ -95,3 +95,32 @@ class RolloutStatusCLI(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 1, result)
         self.assertEqual(json.loads(result.stdout)["state"], "waiting")
+
+    def test_json_contract(self):
+        snapshot = {
+            "kind": "Deployment",
+            "metadata": {"generation": 2},
+            "spec": {"replicas": 1},
+        }
+        for status, code, state in (
+            ({}, 1, "waiting"),
+            ({"observedGeneration": 2, "replicas": 1,
+              "updatedReplicas": 1, "availableReplicas": 1}, 0, "complete"),
+            ({"observedGeneration": 2, "conditions": [
+                {"type": "Progressing", "status": "False",
+                 "reason": "ProgressDeadlineExceeded"},
+            ]}, 2, "stalled"),
+        ):
+            with self.subTest(state=state):
+                result = self.run_checker(json.dumps(dict(snapshot, status=status)), "--json")
+                self.assertEqual(result.returncode, code, result)
+                self.assertEqual(result.stderr, "")
+                report = json.loads(result.stdout)
+                self.assertEqual(report["state"], state)
+                self.assertEqual(report["exit_code"], code)
+                self.assertIsInstance(report["message"], str)
+
+        malformed = self.run_checker("{", "--json")
+        self.assertEqual(malformed.returncode, 3)
+        self.assertEqual(malformed.stdout, "")
+        self.assertIn("invalid Deployment snapshot", malformed.stderr)
