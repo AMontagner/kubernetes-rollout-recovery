@@ -86,6 +86,10 @@ def main():
             "observed_generation": status.get("observedGeneration", 0),
             "available_replicas": status.get("availableReplicas", 0),
             "updated_replicas": status.get("updatedReplicas", 0),
+            "conditions": [
+                {key: condition.get(key) for key in ("type", "status", "reason") if condition.get(key) is not None}
+                for condition in status.get("conditions", [])
+            ],
         }
         print(json.dumps({"state": state, "exit_code": code, "message": message, "details": details}))
     else:

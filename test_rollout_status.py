@@ -122,6 +122,7 @@ class RolloutStatusCLI(unittest.TestCase):
                 self.assertEqual(report["exit_code"], code)
                 self.assertIsInstance(report["message"], str)
                 self.assertIn("details", report)
+                self.assertEqual(report["details"]["conditions"], [])
                 self.assertEqual(report["details"]["desired_replicas"], 1)
                 self.assertEqual(report["details"]["observed_generation"], status.get("observedGeneration", 0))
 
