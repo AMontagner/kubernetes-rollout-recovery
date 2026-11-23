@@ -4,13 +4,24 @@ import json
 import sys
 
 
+def nonnegative_integer(value, field):
+    if type(value) is not int or value < 0:
+        raise ValueError(f"{field} must be a nonnegative integer")
+    return value
+
+
 def classify(deployment):
     if deployment["kind"] != "Deployment":
         raise ValueError("expected a Deployment")
-    generation = deployment["metadata"]["generation"]
-    desired = deployment["spec"].get("replicas", 1)
+    generation = nonnegative_integer(deployment["metadata"]["generation"], "metadata.generation")
+    desired = nonnegative_integer(deployment["spec"].get("replicas", 1), "spec.replicas")
     status = deployment.get("status", {})
-    if status.get("observedGeneration", 0) < generation:
+    observed = nonnegative_integer(status.get("observedGeneration", 0), "status.observedGeneration")
+    replica_counts = [
+        nonnegative_integer(status.get(field, 0), f"status.{field}")
+        for field in ("updatedReplicas", "replicas", "availableReplicas")
+    ]
+    if observed < generation:
         return 1, "waiting for controller to observe the latest generation"
     if any(
         condition.get("type") == "Progressing"
@@ -19,10 +30,7 @@ def classify(deployment):
         for condition in status.get("conditions", [])
     ):
         return 2, "rollout exceeded its progress deadline"
-    if all(
-        status.get(field, 0) == desired
-        for field in ("updatedReplicas", "replicas", "availableReplicas")
-    ):
+    if all(count == desired for count in replica_counts):
         return 0, f"rollout complete: {desired} updated and available replicas"
     return 1, "waiting for updated replicas to become available and old replicas to terminate"
 
