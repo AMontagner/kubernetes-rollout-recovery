@@ -124,3 +124,33 @@ class RolloutStatusCLI(unittest.TestCase):
         self.assertEqual(malformed.returncode, 3)
         self.assertEqual(malformed.stdout, "")
         self.assertIn("invalid Deployment snapshot", malformed.stderr)
+
+    def test_invalid_counters(self):
+        fields = {
+            "metadata": {"generation": 2},
+            "spec": {"replicas": 1},
+            "status": {"observedGeneration": 2, "updatedReplicas": 1,
+                       "replicas": 1, "availableReplicas": 1},
+        }
+        for section, values in fields.items():
+            for field in values:
+                for invalid in (True, 1.0, -1, "1", None):
+                    with self.subTest(section=section, field=field, value=invalid):
+                        snapshot = {name: dict(data) for name, data in fields.items()}
+                        snapshot["kind"] = "Deployment"
+                        snapshot[section][field] = invalid
+                        result = self.run_checker(json.dumps(snapshot), "--json")
+                        self.assertEqual(result.returncode, 3, result)
+                        self.assertEqual(result.stdout, "")
+                        self.assertIn(f"{section}.{field}", result.stderr)
+
+    def test_scale_to_zero(self):
+        snapshot = {
+            "kind": "Deployment",
+            "metadata": {"generation": 2},
+            "spec": {"replicas": 0},
+            "status": {"observedGeneration": 2},
+        }
+        result = self.run_checker(json.dumps(snapshot), "--json")
+        self.assertEqual(result.returncode, 0, result)
+        self.assertEqual(json.loads(result.stdout)["state"], "complete")
