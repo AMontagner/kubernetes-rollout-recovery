@@ -57,6 +57,15 @@ class RolloutStatusCLI(unittest.TestCase):
                 self.assertEqual(result.stdout, "")
                 self.assertIn("invalid Deployment snapshot", result.stderr)
 
+    def test_expect_generation(self):
+        snapshot = {"kind": "Deployment", "metadata": {"generation": 4}, "spec": {"replicas": 0}, "status": {"observedGeneration": 4}}
+        for expected, code, state in ((4, 0, "complete"), (3, 1, "waiting")):
+            with self.subTest(expected=expected):
+                result = self.run_checker(json.dumps(snapshot), "--expect-generation", str(expected), "--json")
+                report = json.loads(result.stdout)
+                self.assertEqual(result.returncode, code, result)
+                self.assertEqual(report["state"], state)
+        
     def test_verify_rollback_image(self):
         snapshot = {
             "kind": "Deployment",

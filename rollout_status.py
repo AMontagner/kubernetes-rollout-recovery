@@ -54,6 +54,7 @@ def classify(deployment):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--json", action="store_true", help="emit a JSON result on stdout")
+    parser.add_argument("--expect-generation", type=int, help="require an exact Deployment metadata.generation")
     parser.add_argument(
         "--expect-image", nargs=2, metavar=("CONTAINER", "IMAGE"),
         help="verify that a named container uses the expected image after recovery",
@@ -62,6 +63,9 @@ def main():
     try:
         deployment = json.load(sys.stdin)
         code, message = classify(deployment)
+        if args.expect_generation is not None and deployment["metadata"]["generation"] != args.expect_generation:
+            code = 1
+            message = f"snapshot generation {deployment["metadata"]["generation"]}, expected {args.expect_generation}"
         if code == 0 and args.expect_image:
             name, expected = args.expect_image
             containers = deployment["spec"]["template"]["spec"]["containers"]

@@ -62,7 +62,7 @@ Use this dependency-free Python 3 check to evaluate captured Deployment status l
 
 ```sh
 kubectl -n rollout-recovery get deployment rollout-web -o json > deployment-snapshot.json
-python3 rollout_status.py < deployment-snapshot.json
+python3 rollout_status.py --expect-generation 2 < deployment-snapshot.json
 ```
 
 Exit codes are 0 for complete, 1 for waiting, 2 for an exceeded progress deadline, 3 for invalid input, and 4 for an expected image mismatch. The JSON mode also returns desired, observed, available, and updated replica counts plus a compact condition summary for CI logs and incident triage. The check evaluates a single snapshot. It also treats an explicit `Available=False` condition as waiting, even when replica counters temporarily match, so CI does not report a healthy rollout while Kubernetes is still declaring the minimum availability unavailable. Capture a fresh snapshot to check subsequent progress.
