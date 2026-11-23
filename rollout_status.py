@@ -37,6 +37,12 @@ def classify(deployment):
         for condition in conditions
     ):
         return 1, "waiting for the Deployment Available condition"
+    if any(
+        condition.get("type") == "ReplicaFailure"
+        and condition.get("status") == "True"
+        for condition in conditions
+    ):
+        return 2, "Deployment reported a replica failure"
     if all(count == desired for count in replica_counts):
         return 0, f"rollout complete: {desired} updated and available replicas"
     return 1, "waiting for updated replicas to become available and old replicas to terminate"
