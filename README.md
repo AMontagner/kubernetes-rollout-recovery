@@ -43,7 +43,7 @@ A recovered deployment reports `"state": "complete"` and exits 0. If the rollout
 For repeatable CI or incident checks, use the wrapper below. It fails fast if `kubectl` cannot capture the Deployment or if the recovered image does not match.
 
 ```sh
-./verify_rollout.sh rollout-recovery rollout-web nginx:1.28-alpine
+./verify_rollout.sh rollout-recovery rollout-web web nginx:1.28-alpine
 ```
 
 When finished, remove the example Deployment.
