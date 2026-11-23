@@ -80,7 +80,14 @@ def main():
         return 3
     if args.json:
         state = {0: "complete", 1: "waiting", 2: "stalled", 4: "image_mismatch"}[code]
-        print(json.dumps({"state": state, "exit_code": code, "message": message}))
+        status = deployment.get("status", {})
+        details = {
+            "desired_replicas": deployment["spec"].get("replicas", 1),
+            "observed_generation": status.get("observedGeneration", 0),
+            "available_replicas": status.get("availableReplicas", 0),
+            "updated_replicas": status.get("updatedReplicas", 0),
+        }
+        print(json.dumps({"state": state, "exit_code": code, "message": message, "details": details}))
     else:
         print(message)
     return code
