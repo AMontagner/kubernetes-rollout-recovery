@@ -40,6 +40,12 @@ kubectl -n rollout-recovery get deployment rollout-web -o json > deployment-snap
 
 A recovered deployment reports `"state": "complete"` and exits 0. If the rollout is healthy but the named container is missing or specifies a different image, the check reports `image_mismatch` and exits 4. This verifies the image reference in the Deployment template. Use an image digest when you need immutable version identification.
 
+For repeatable CI or incident checks, use the wrapper below. It fails fast if `kubectl` cannot capture the Deployment or if the recovered image does not match.
+
+```sh
+./verify_rollout.sh rollout-recovery rollout-web nginx:1.28-alpine
+```
+
 When finished, remove the example Deployment.
 
 ```sh
