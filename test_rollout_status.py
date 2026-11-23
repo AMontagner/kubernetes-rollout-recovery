@@ -39,7 +39,7 @@ class RolloutStatusCLI(unittest.TestCase):
             ("updated replicas unavailable", dict(healthy, availableReplicas=1), 1, "waiting"),
             ("deadline exceeded", dict(healthy, conditions=expired), 2, "progress deadline"),
             ("availability condition", dict(healthy, conditions=[{"type": "Available", "status": "False"}]), 1, "Available condition"),
-            ("replica failure", dict(healthy, conditions=[{"type": "ReplicaFailure", "status": "True"}]), 2, "replica failure"),
+            ("replica failure", dict(healthy, conditions=[{"type": "ReplicaFailure", "status": "True", "reason": "FailedCreate"}]), 2, "replica failure: FailedCreate"),
             ("stale deadline", dict(healthy, observedGeneration=1, conditions=expired), 1, "latest generation"),
         ]
         for name, status, code, message in cases:
