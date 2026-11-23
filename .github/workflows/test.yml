@@ -17,6 +17,6 @@ jobs:
         with:
           persist-credentials: false
       - name: Validate shell wrapper syntax
-        run: bash -n verify_rollout.sh
+        run: make lint-shell
       - name: Run offline regression tests
-        run: python3 -m unittest -v
+        run: make test

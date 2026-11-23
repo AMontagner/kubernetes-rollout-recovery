@@ -52,6 +52,10 @@ When finished, remove the example Deployment.
 kubectl -n rollout-recovery delete deployment rollout-web
 ```
 
+## Repeatable local validation
+
+Run the same checks used by CI with `make verify`. This validates the shell wrapper and executes the offline Python regression suite without requiring a Kubernetes cluster.
+
 ## Check deployment health from a snapshot
 
 Use this dependency-free Python 3 check to evaluate captured Deployment status locally or in CI.
