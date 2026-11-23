@@ -16,5 +16,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           persist-credentials: false
+      - name: Validate shell wrapper syntax
+        run: bash -n verify_rollout.sh
       - name: Run offline regression tests
         run: python3 -m unittest -v
