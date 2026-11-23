@@ -23,13 +23,20 @@ def classify(deployment):
     ]
     if observed < generation:
         return 1, "waiting for controller to observe the latest generation"
+    conditions = status.get("conditions", [])
     if any(
         condition.get("type") == "Progressing"
         and condition.get("status") == "False"
         and condition.get("reason") == "ProgressDeadlineExceeded"
-        for condition in status.get("conditions", [])
+        for condition in conditions
     ):
         return 2, "rollout exceeded its progress deadline"
+    if desired and any(
+        condition.get("type") == "Available"
+        and condition.get("status") == "False"
+        for condition in conditions
+    ):
+        return 1, "waiting for the Deployment Available condition"
     if all(count == desired for count in replica_counts):
         return 0, f"rollout complete: {desired} updated and available replicas"
     return 1, "waiting for updated replicas to become available and old replicas to terminate"
