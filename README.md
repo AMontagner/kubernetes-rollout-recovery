@@ -1,6 +1,8 @@
 <!-- weekly-project: 2026-11-23 -->
 # Kubernetes Rollout Recovery
 
+**Operational companion:** [Incident response runbook](INCIDENT_RESPONSE.md) for evidence capture, failure classification, rollback, and verification.
+
 A reproducible Kubernetes deployment failure and recovery workflow. Diagnose a stalled rolling update, inspect Pod events, and verify rollback to a healthy revision. Use a disposable local Kubernetes cluster and `kubectl`. The example uses a dedicated namespace.
 
 ## Deploy a healthy baseline
