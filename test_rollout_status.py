@@ -71,7 +71,21 @@ class RolloutStatusCLI(unittest.TestCase):
         result = self.run_checker(json.dumps(snapshot), "--json")
         self.assertEqual(result.returncode, 3, result)
         self.assertEqual(result.stdout, "")
-        self.assertIn("invalid Deployment snapshot", result.stderr)
+        self.assertIn("status.conditions must be a list of objects", result.stderr)
+
+    def test_malformed_condition_entries_are_invalid(self):
+        for conditions in (None, [None], ["Available"], [1]):
+            with self.subTest(conditions=conditions):
+                snapshot = {
+                    "kind": "Deployment",
+                    "metadata": {"generation": 1},
+                    "spec": {"replicas": 1},
+                    "status": {"observedGeneration": 1, "conditions": conditions},
+                }
+                result = self.run_checker(json.dumps(snapshot), "--json")
+                self.assertEqual(result.returncode, 3, result)
+                self.assertEqual(result.stdout, "")
+                self.assertIn("status.conditions must be a list of objects", result.stderr)
 
     def test_replica_failure_detail_in_json(self):
         snapshot = {"kind": "Deployment", "metadata": {"generation": 3}, "spec": {"replicas": 1}, "status": {"observedGeneration": 3, "conditions": [{"type": "ReplicaFailure", "status": "True", "reason": "FailedCreate", "message": "quota exceeded"}]}}

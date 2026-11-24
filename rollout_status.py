@@ -10,6 +10,12 @@ def nonnegative_integer(value, field):
     return value
 
 
+def validate_conditions(conditions):
+    if type(conditions) is not list or any(type(condition) is not dict for condition in conditions):
+        raise ValueError("status.conditions must be a list of objects")
+    return conditions
+
+
 def classify(deployment):
     if deployment["kind"] != "Deployment":
         raise ValueError("expected a Deployment")
@@ -23,7 +29,7 @@ def classify(deployment):
     ]
     if observed < generation:
         return 1, "waiting for controller to observe the latest generation"
-    conditions = status.get("conditions", [])
+    conditions = validate_conditions(status.get("conditions", []))
     if any(
         condition.get("type") == "Progressing"
         and condition.get("status") == "False"
