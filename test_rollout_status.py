@@ -66,6 +66,14 @@ class RolloutStatusCLI(unittest.TestCase):
                 self.assertEqual(result.returncode, code, result)
                 self.assertEqual(json.loads(result.stdout)["state"], state)
 
+    def test_replica_failure_detail_in_json(self):
+        snapshot = {"kind": "Deployment", "metadata": {"generation": 3}, "spec": {"replicas": 1}, "status": {"observedGeneration": 3, "conditions": [{"type": "ReplicaFailure", "status": "True", "reason": "FailedCreate", "message": "quota exceeded"}]}}
+        result = self.run_checker(json.dumps(snapshot), "--json")
+        report = json.loads(result.stdout)
+        self.assertEqual(result.returncode, 2, result)
+        self.assertIn("FailedCreate", report["message"])
+        self.assertEqual(report["details"]["conditions"][0]["reason"], "FailedCreate")
+
     def test_expect_generation(self):
         snapshot = {"kind": "Deployment", "metadata": {"generation": 4}, "spec": {"replicas": 0}, "status": {"observedGeneration": 4}}
         for expected, code, state in ((4, 0, "complete"), (3, 1, "waiting")):
