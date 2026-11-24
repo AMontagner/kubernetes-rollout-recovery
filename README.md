@@ -54,6 +54,17 @@ When finished, remove the example Deployment.
 kubectl -n rollout-recovery delete deployment rollout-web
 ```
 
+## Reproduce offline scenarios
+
+The committed fixtures exercise the same CLI used in CI:
+
+```sh
+python3 rollout_status.py --json < fixtures/healthy.json
+python3 rollout_status.py --json < fixtures/stalled-replica-failure.json
+```
+
+The healthy fixture exits 0. The stalled fixture exits 2 and preserves the controller failure reason in the JSON message, giving reviewers a deterministic example without a cluster.
+
 ## Repeatable local validation
 
 Run the same checks used by CI with `make verify`. This validates the shell wrapper and executes the offline Python regression suite without requiring a Kubernetes cluster.
