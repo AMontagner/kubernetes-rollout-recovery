@@ -1,0 +1,22 @@
+{
+  "kind": "Deployment",
+  "metadata": {
+    "generation": 4
+  },
+  "spec": {
+    "replicas": 2
+  },
+  "status": {
+    "observedGeneration": 4,
+    "replicas": 2,
+    "updatedReplicas": 2,
+    "availableReplicas": 2,
+    "conditions": [
+      {
+        "type": "Available",
+        "status": "True",
+        "reason": "MinimumReplicasAvailable"
+      }
+    ]
+  }
+}

@@ -57,6 +57,15 @@ class RolloutStatusCLI(unittest.TestCase):
                 self.assertEqual(result.stdout, "")
                 self.assertIn("invalid Deployment snapshot", result.stderr)
 
+    def test_committed_fixtures(self):
+        cases = (("healthy.json", 0, "complete"), ("stalled-replica-failure.json", 2, "stalled"))
+        for filename, code, state in cases:
+            with self.subTest(filename=filename):
+                fixture = Path(__file__).with_name("fixtures") / filename
+                result = subprocess.run([sys.executable, str(CHECKER), "--json"], input=fixture.read_text(), text=True, capture_output=True, timeout=5)
+                self.assertEqual(result.returncode, code, result)
+                self.assertEqual(json.loads(result.stdout)["state"], state)
+
     def test_expect_generation(self):
         snapshot = {"kind": "Deployment", "metadata": {"generation": 4}, "spec": {"replicas": 0}, "status": {"observedGeneration": 4}}
         for expected, code, state in ((4, 0, "complete"), (3, 1, "waiting")):
