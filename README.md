@@ -62,9 +62,10 @@ The committed fixtures exercise the same CLI used in CI:
 python3 rollout_status.py --json < fixtures/healthy.json
 python3 rollout_status.py --json < fixtures/stalled-replica-failure.json
 python3 rollout_status.py --json < fixtures/waiting-available.json
+python3 rollout_status.py --json < fixtures/stale-generation.json
 ```
 
-The healthy fixture exits 0. The stalled fixture exits 2 and preserves the controller failure reason in the JSON message. The availability fixture exits 1 even though replica counters match, demonstrating why the controller's `Available=False` signal must be honored. Together these fixtures give reviewers deterministic health outcomes without a cluster.
+The healthy fixture exits 0. The stalled fixture exits 2 and preserves the controller failure reason in the JSON message. The availability fixture exits 1 even though replica counters match, demonstrating why the controller's `Available=False` signal must be honored. The stale-generation fixture exits 1 while the controller catches up, preventing a matching replica count from being mistaken for validation of the newest revision. Together these fixtures give reviewers deterministic health outcomes without a cluster.
 
 ## Repeatable local validation
 

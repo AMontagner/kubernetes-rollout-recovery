@@ -62,6 +62,7 @@ class RolloutStatusCLI(unittest.TestCase):
             ("healthy.json", 0, "complete"),
             ("stalled-replica-failure.json", 2, "stalled"),
             ("waiting-available.json", 1, "waiting"),
+            ("stale-generation.json", 1, "waiting"),
         )
         for filename, code, state in cases:
             with self.subTest(filename=filename):
