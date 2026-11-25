@@ -57,6 +57,15 @@ def classify(deployment):
     return 1, "waiting for updated replicas to become available and old replicas to terminate"
 
 
+def recommended_action(code):
+    return {
+        0: "no action required; rollout is complete",
+        1: "continue monitoring until the expected replicas are available",
+        2: "inspect Pod events and initiate rollback or remediation",
+        4: "verify the recovered image and Deployment template before proceeding",
+    }[code]
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--json", action="store_true", help="emit a JSON result on stdout")
@@ -101,7 +110,13 @@ def main():
                 for condition in status.get("conditions", [])
             ],
         }
-        print(json.dumps({"state": state, "exit_code": code, "message": message, "details": details}))
+        print(json.dumps({
+            "state": state,
+            "exit_code": code,
+            "message": message,
+            "recommended_action": recommended_action(code),
+            "details": details,
+        }))
     else:
         print(message)
     return code

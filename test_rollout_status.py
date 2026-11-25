@@ -136,6 +136,7 @@ class RolloutStatusCLI(unittest.TestCase):
                 self.assertEqual(result.returncode, code, result)
                 self.assertEqual(report["exit_code"], code)
                 self.assertEqual(report["state"], state)
+                self.assertIsInstance(report["recommended_action"], str)
                 self.assertIn(detail, report["message"])
                 self.assertEqual(result.stderr, "")
 
@@ -169,6 +170,12 @@ class RolloutStatusCLI(unittest.TestCase):
                 self.assertEqual(report["state"], state)
                 self.assertEqual(report["exit_code"], code)
                 self.assertIsInstance(report["message"], str)
+                actions = {
+                    0: "no action required; rollout is complete",
+                    1: "continue monitoring until the expected replicas are available",
+                    2: "inspect Pod events and initiate rollback or remediation",
+                }
+                self.assertEqual(report["recommended_action"], actions[code])
                 self.assertIn("details", report)
                 self.assertIsInstance(report["details"]["conditions"], list)
                 self.assertEqual(report["details"]["desired_replicas"], 1)
