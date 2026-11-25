@@ -9,5 +9,6 @@ These fixtures make the recovery decision observable without a cluster.
 | Replica creation failure | `ReplicaFailure=True` | Exit 2 / `stalled` | Capture the reason/message before rollback |
 | Converging rollout | Observed generation or replica counts lag | Exit 1 / `waiting` | Recheck with a fresh snapshot |
 | Wrong recovery image | Healthy counters but unexpected template image | Exit 4 / `image_mismatch` | Stop promotion and correct the image reference |
+| Wrong recovery revision | Healthy counters but unexpected Deployment revision annotation | Exit 5 / `revision_mismatch` | Stop promotion and reconcile rollout history |
 
-The checker deliberately separates **waiting** from **stalled** so automation can retry transient convergence but page an operator for a controller failure. The JSON details preserve replica counts and condition reasons for the incident timeline.
+The checker deliberately separates **waiting** from **stalled** so automation can retry transient convergence but page an operator for a controller failure. Image and revision checks make rollback verification explicit; both must match before promotion resumes. The JSON details preserve replica counts, the deployment revision, and condition reasons for the incident timeline.
