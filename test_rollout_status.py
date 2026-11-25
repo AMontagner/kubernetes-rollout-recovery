@@ -104,6 +104,23 @@ class RolloutStatusCLI(unittest.TestCase):
                 self.assertEqual(result.stdout, "")
                 self.assertIn("status.conditions must be a list of objects", result.stderr)
 
+    def test_malformed_revision_annotations_are_invalid(self):
+        for annotations, error in (
+            ([], "metadata.annotations must be an object"),
+            ({"deployment.kubernetes.io/revision": 7}, "deployment.kubernetes.io/revision must be a string"),
+        ):
+            with self.subTest(annotations=annotations):
+                snapshot = {
+                    "kind": "Deployment",
+                    "metadata": {"generation": 1, "annotations": annotations},
+                    "spec": {"replicas": 0},
+                    "status": {"observedGeneration": 1},
+                }
+                result = self.run_checker(json.dumps(snapshot), "--json")
+                self.assertEqual(result.returncode, 3, result)
+                self.assertEqual(result.stdout, "")
+                self.assertIn(error, result.stderr)
+
     def test_replica_failure_detail_in_json(self):
         snapshot = {"kind": "Deployment", "metadata": {"generation": 3}, "spec": {"replicas": 1}, "status": {"observedGeneration": 3, "conditions": [{"type": "ReplicaFailure", "status": "True", "reason": "FailedCreate", "message": "quota exceeded"}]}}
         result = self.run_checker(json.dumps(snapshot), "--json")

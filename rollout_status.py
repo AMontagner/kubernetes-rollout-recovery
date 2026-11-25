@@ -20,7 +20,10 @@ def deployment_revision(deployment):
     annotations = deployment["metadata"].get("annotations", {})
     if type(annotations) is not dict:
         raise ValueError("metadata.annotations must be an object")
-    return annotations.get("deployment.kubernetes.io/revision")
+    revision = annotations.get("deployment.kubernetes.io/revision")
+    if revision is not None and type(revision) is not str:
+        raise ValueError("deployment.kubernetes.io/revision must be a string")
+    return revision
 
 
 def classify(deployment):
