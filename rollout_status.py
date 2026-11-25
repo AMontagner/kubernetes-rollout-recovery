@@ -16,6 +16,13 @@ def validate_conditions(conditions):
     return conditions
 
 
+def deployment_revision(deployment):
+    annotations = deployment["metadata"].get("annotations", {})
+    if type(annotations) is not dict:
+        raise ValueError("metadata.annotations must be an object")
+    return annotations.get("deployment.kubernetes.io/revision")
+
+
 def classify(deployment):
     if deployment["kind"] != "Deployment":
         raise ValueError("expected a Deployment")
@@ -63,6 +70,7 @@ def recommended_action(code):
         1: "continue monitoring until the expected replicas are available",
         2: "inspect Pod events and initiate rollback or remediation",
         4: "verify the recovered image and Deployment template before proceeding",
+        5: "verify the rollback revision annotation and Deployment history before proceeding",
     }[code]
 
 
@@ -70,6 +78,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--json", action="store_true", help="emit a JSON result on stdout")
     parser.add_argument("--expect-generation", type=int, help="require an exact Deployment metadata.generation")
+    parser.add_argument("--expect-revision", help="require an exact Deployment revision annotation after recovery")
     parser.add_argument(
         "--expect-image", nargs=2, metavar=("CONTAINER", "IMAGE"),
         help="verify that a named container uses the expected image after recovery",
@@ -78,6 +87,7 @@ def main():
     try:
         deployment = json.load(sys.stdin)
         code, message = classify(deployment)
+        revision = deployment_revision(deployment)
         if args.expect_generation is not None and deployment["metadata"]["generation"] != args.expect_generation:
             code = 1
             message = f"snapshot generation {deployment["metadata"]["generation"]}, expected {args.expect_generation}"
@@ -94,17 +104,21 @@ def main():
                     f"container {name} is missing" if actual is None
                     else f"container {name} uses {actual}, expected {expected}"
                 )
+        if code == 0 and args.expect_revision is not None and revision != args.expect_revision:
+            code = 5
+            message = f"deployment revision {revision}, expected {args.expect_revision}"
     except (ValueError, KeyError, TypeError, AttributeError) as error:
         print(f"invalid Deployment snapshot: {error}", file=sys.stderr)
         return 3
     if args.json:
-        state = {0: "complete", 1: "waiting", 2: "stalled", 4: "image_mismatch"}[code]
+        state = {0: "complete", 1: "waiting", 2: "stalled", 4: "image_mismatch", 5: "revision_mismatch"}[code]
         status = deployment.get("status", {})
         details = {
             "desired_replicas": deployment["spec"].get("replicas", 1),
             "observed_generation": status.get("observedGeneration", 0),
             "available_replicas": status.get("availableReplicas", 0),
             "updated_replicas": status.get("updatedReplicas", 0),
+            "deployment_revision": revision,
             "conditions": [
                 {key: condition.get(key) for key in ("type", "status", "reason", "message") if condition.get(key) is not None}
                 for condition in status.get("conditions", [])

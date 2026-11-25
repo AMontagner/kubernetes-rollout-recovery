@@ -109,6 +109,29 @@ class RolloutStatusCLI(unittest.TestCase):
                 report = json.loads(result.stdout)
                 self.assertEqual(result.returncode, code, result)
                 self.assertEqual(report["state"], state)
+
+    def test_verify_rollback_revision(self):
+        snapshot = {
+            "kind": "Deployment",
+            "metadata": {
+                "generation": 4,
+                "annotations": {"deployment.kubernetes.io/revision": "7"},
+            },
+            "spec": {"replicas": 0},
+            "status": {"observedGeneration": 4},
+        }
+        for expected, code, state, detail in (
+            ("7", 0, "complete", "no action required"),
+            ("6", 5, "revision_mismatch", "deployment revision 7, expected 6"),
+        ):
+            with self.subTest(expected=expected):
+                result = self.run_checker(json.dumps(snapshot), "--expect-revision", expected, "--json")
+                report = json.loads(result.stdout)
+                self.assertEqual(result.returncode, code, result)
+                self.assertEqual(report["state"], state)
+                self.assertEqual(report["exit_code"], code)
+                self.assertEqual(report["details"]["deployment_revision"], "7")
+                self.assertIn(detail, report["recommended_action"] if code == 0 else report["message"])
         
     def test_verify_rollback_image(self):
         snapshot = {
