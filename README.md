@@ -69,7 +69,7 @@ The healthy fixture exits 0. The stalled fixture exits 2 and preserves the contr
 
 ## Repeatable local validation
 
-Run the same checks used by CI with `make verify`. This validates the shell wrapper and executes the offline Python regression suite without requiring a Kubernetes cluster.
+Run the same checks used by CI with `make verify`. This validates the shell wrapper, executes every committed fixture against its expected exit code and state, and runs the offline Python regression suite without requiring a Kubernetes cluster. Use `make fixtures` when you want the scenario matrix summary without the full test suite.
 
 ## Check deployment health from a snapshot
 
