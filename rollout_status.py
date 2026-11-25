@@ -118,6 +118,7 @@ def main():
         status = deployment.get("status", {})
         details = {
             "desired_replicas": deployment["spec"].get("replicas", 1),
+            "deployment_generation": deployment["metadata"]["generation"],
             "observed_generation": status.get("observedGeneration", 0),
             "available_replicas": status.get("availableReplicas", 0),
             "updated_replicas": status.get("updatedReplicas", 0),

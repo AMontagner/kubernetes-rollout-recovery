@@ -260,6 +260,7 @@ class RolloutStatusCLI(unittest.TestCase):
                 self.assertIn("details", report)
                 self.assertIsInstance(report["details"]["conditions"], list)
                 self.assertEqual(report["details"]["desired_replicas"], 1)
+                self.assertEqual(report["details"]["deployment_generation"], 2)
                 self.assertEqual(report["details"]["observed_generation"], status.get("observedGeneration", 0))
 
         malformed = self.run_checker("{", "--json")
