@@ -1,12 +1,16 @@
 """Verify the exit codes consumed by CI and recovery scripts."""
 import json
+import os
 from pathlib import Path
+import shlex
 import subprocess
 import sys
+import tempfile
 import unittest
 
 
 CHECKER = Path(__file__).with_name("rollout_status.py")
+WRAPPER = Path(__file__).with_name("verify_rollout.sh")
 
 
 class RolloutStatusCLI(unittest.TestCase):
@@ -82,6 +86,26 @@ class RolloutStatusCLI(unittest.TestCase):
         self.assertEqual(report["state"], "complete")
         self.assertEqual(report["details"]["deployment_revision"], "7")
         self.assertIn("rollout complete", report["message"])
+
+    def test_wrapper_propagates_rollback_guards(self):
+        fixture = Path(__file__).with_name("fixtures") / "rollback-verified.json"
+        with tempfile.TemporaryDirectory() as temp_dir:
+            kubectl = Path(temp_dir) / "kubectl"
+            kubectl.write_text(f"#!/bin/sh\ncat {shlex.quote(str(fixture))}\n")
+            kubectl.chmod(0o755)
+            environment = os.environ.copy()
+            environment["PATH"] = f"{temp_dir}{os.pathsep}{environment['PATH']}"
+            for expected_revision, code, state in (("7", 0, "complete"), ("6", 5, "revision_mismatch")):
+                with self.subTest(expected_revision=expected_revision):
+                    result = subprocess.run(
+                        ["bash", str(WRAPPER), "rollout-recovery", "rollout-web", "web", "nginx:1.28-alpine", "4", expected_revision],
+                        cwd=CHECKER.parent, env=environment, text=True,
+                        capture_output=True, timeout=5,
+                    )
+                    report = json.loads(result.stdout)
+                    self.assertEqual(result.returncode, code, result)
+                    self.assertEqual(report["state"], state)
+                    self.assertEqual(report["details"]["deployment_revision"], "7")
 
     def test_malformed_conditions_are_invalid(self):
         snapshot = {"kind": "Deployment", "metadata": {"generation": 1}, "spec": {"replicas": 1}, "status": {"observedGeneration": 1, "conditions": {"type": "Available"}}}
