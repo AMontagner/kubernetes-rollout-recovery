@@ -58,7 +58,11 @@ class RolloutStatusCLI(unittest.TestCase):
                 self.assertIn("invalid Deployment snapshot", result.stderr)
 
     def test_committed_fixtures(self):
-        cases = (("healthy.json", 0, "complete"), ("stalled-replica-failure.json", 2, "stalled"))
+        cases = (
+            ("healthy.json", 0, "complete"),
+            ("stalled-replica-failure.json", 2, "stalled"),
+            ("waiting-available.json", 1, "waiting"),
+        )
         for filename, code, state in cases:
             with self.subTest(filename=filename):
                 fixture = Path(__file__).with_name("fixtures") / filename

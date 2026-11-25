@@ -1,0 +1,23 @@
+{
+  "kind": "Deployment",
+  "metadata": {
+    "generation": 7
+  },
+  "spec": {
+    "replicas": 2
+  },
+  "status": {
+    "observedGeneration": 7,
+    "replicas": 2,
+    "updatedReplicas": 2,
+    "availableReplicas": 2,
+    "conditions": [
+      {
+        "type": "Available",
+        "status": "False",
+        "reason": "MinimumReplicasUnavailable",
+        "message": "deployment does not have minimum availability"
+      }
+    ]
+  }
+}
