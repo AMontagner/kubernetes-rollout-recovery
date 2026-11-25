@@ -37,10 +37,10 @@ After rollback, verify the expected image and that every desired replica is avai
 
 ```sh
 kubectl -n rollout-recovery get deployment rollout-web -o json > deployment-snapshot.json &&
-  python3 rollout_status.py --json --expect-image web nginx:1.28-alpine < deployment-snapshot.json
+  python3 rollout_status.py --json --expect-image web nginx:1.28-alpine --expect-revision 7 < deployment-snapshot.json
 ```
 
-A recovered deployment reports `"state": "complete"` and exits 0. If the rollout is healthy but the named container is missing or specifies a different image, the check reports `image_mismatch` and exits 4. This verifies the image reference in the Deployment template. Use an image digest when you need immutable version identification.
+A recovered deployment reports `"state": "complete"` and exits 0. If the rollout is healthy but the named container is missing or specifies a different image, the check reports `image_mismatch` and exits 4. If the revision annotation differs, it reports `revision_mismatch` and exits 5. Together these checks verify both the image reference and the Deployment revision reached after rollback. Use an image digest when you need immutable version identification.
 
 For repeatable CI or incident checks, use the wrapper below. It fails fast if `kubectl` cannot capture the Deployment or if the recovered image does not match.
 
@@ -63,9 +63,10 @@ python3 rollout_status.py --json < fixtures/healthy.json
 python3 rollout_status.py --json < fixtures/stalled-replica-failure.json
 python3 rollout_status.py --json < fixtures/waiting-available.json
 python3 rollout_status.py --json < fixtures/stale-generation.json
+python3 rollout_status.py --json --expect-image web nginx:1.28-alpine --expect-revision 7 < fixtures/rollback-verified.json
 ```
 
-The healthy fixture exits 0. The stalled fixture exits 2 and preserves the controller failure reason in the JSON message. The availability fixture exits 1 even though replica counters match, demonstrating why the controller's `Available=False` signal must be honored. The stale-generation fixture exits 1 while the controller catches up, preventing a matching replica count from being mistaken for validation of the newest revision. Together these fixtures give reviewers deterministic health outcomes without a cluster.
+The healthy fixture exits 0. The stalled fixture exits 2 and preserves the controller failure reason in the JSON message. The availability fixture exits 1 even though replica counters match, demonstrating why the controller's `Available=False` signal must be honored. The stale-generation fixture exits 1 while the controller catches up, preventing a matching replica count from being mistaken for validation of the newest revision. The rollback fixture exits 0 only when both the expected image and revision annotation match. Together these fixtures give reviewers deterministic health outcomes without a cluster.
 
 ## Repeatable local validation
 

@@ -71,6 +71,18 @@ class RolloutStatusCLI(unittest.TestCase):
                 self.assertEqual(result.returncode, code, result)
                 self.assertEqual(json.loads(result.stdout)["state"], state)
 
+    def test_committed_rollback_evidence(self):
+        fixture = Path(__file__).with_name("fixtures") / "rollback-verified.json"
+        result = subprocess.run(
+            [sys.executable, str(CHECKER), "--json", "--expect-image", "web", "nginx:1.28-alpine", "--expect-revision", "7"],
+            input=fixture.read_text(), text=True, capture_output=True, timeout=5,
+        )
+        report = json.loads(result.stdout)
+        self.assertEqual(result.returncode, 0, result)
+        self.assertEqual(report["state"], "complete")
+        self.assertEqual(report["details"]["deployment_revision"], "7")
+        self.assertIn("rollout complete", report["message"])
+
     def test_malformed_conditions_are_invalid(self):
         snapshot = {"kind": "Deployment", "metadata": {"generation": 1}, "spec": {"replicas": 1}, "status": {"observedGeneration": 1, "conditions": {"type": "Available"}}}
         result = self.run_checker(json.dumps(snapshot), "--json")
