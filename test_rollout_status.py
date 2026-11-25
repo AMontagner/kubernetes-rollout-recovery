@@ -94,6 +94,7 @@ class RolloutStatusCLI(unittest.TestCase):
         self.assertEqual(result.returncode, 2, result)
         self.assertIn("FailedCreate", report["message"])
         self.assertEqual(report["details"]["conditions"][0]["reason"], "FailedCreate")
+        self.assertEqual(report["details"]["conditions"][0]["message"], "quota exceeded")
 
     def test_expect_generation(self):
         snapshot = {"kind": "Deployment", "metadata": {"generation": 4}, "spec": {"replicas": 0}, "status": {"observedGeneration": 4}}
