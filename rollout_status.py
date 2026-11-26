@@ -4,6 +4,15 @@ import json
 import sys
 
 
+STATE_NAMES = {
+    0: "complete",
+    1: "waiting",
+    2: "stalled",
+    4: "image_mismatch",
+    5: "revision_mismatch",
+}
+
+
 def nonnegative_integer(value, field):
     if type(value) is not int or value < 0:
         raise ValueError(f"{field} must be a nonnegative integer")
@@ -82,9 +91,34 @@ def recommended_action(code):
     }[code]
 
 
+def metrics_report(code, deployment):
+    status = deployment.get("status", {})
+    generation = deployment["metadata"]["generation"]
+    observed = status.get("observedGeneration", 0)
+    values = {
+        "rollout_state_code": code,
+        "rollout_generation_lag": generation - observed,
+        "rollout_desired_replicas": deployment["spec"].get("replicas", 1),
+        "rollout_available_replicas": status.get("availableReplicas", 0),
+        "rollout_updated_replicas": status.get("updatedReplicas", 0),
+        "rollout_unavailable_replicas": status.get("unavailableReplicas", 0),
+    }
+    lines = [
+        "# HELP rollout_state_code Checker result code (0 complete, 1 waiting, 2 stalled, 4 image mismatch, 5 revision mismatch).",
+        "# TYPE rollout_state_code gauge",
+    ]
+    for name, value in values.items():
+        if name != "rollout_state_code":
+            lines.extend([f"# TYPE {name} gauge"])
+        lines.append(f"{name} {value}")
+    return "\n".join(lines)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--json", action="store_true", help="emit a JSON result on stdout")
+    output = parser.add_mutually_exclusive_group()
+    output.add_argument("--json", action="store_true", help="emit a JSON result on stdout")
+    output.add_argument("--metrics", action="store_true", help="emit OpenMetrics-style gauges on stdout")
     parser.add_argument("--expect-generation", type=int, help="require an exact Deployment metadata.generation")
     parser.add_argument("--expect-revision", help="require an exact Deployment revision annotation after recovery")
     parser.add_argument(
@@ -118,8 +152,10 @@ def main():
     except (ValueError, KeyError, TypeError, AttributeError) as error:
         print(f"invalid Deployment snapshot: {error}", file=sys.stderr)
         return 3
-    if args.json:
-        state = {0: "complete", 1: "waiting", 2: "stalled", 4: "image_mismatch", 5: "revision_mismatch"}[code]
+    if args.metrics:
+        print(metrics_report(code, deployment))
+    elif args.json:
+        state = STATE_NAMES[code]
         status = deployment.get("status", {})
         details = {
             "desired_replicas": deployment["spec"].get("replicas", 1),

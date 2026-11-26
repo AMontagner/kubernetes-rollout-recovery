@@ -310,6 +310,28 @@ class RolloutStatusCLI(unittest.TestCase):
         self.assertEqual(malformed.stdout, "")
         self.assertIn("invalid Deployment snapshot", malformed.stderr)
 
+    def test_metrics_contract(self):
+        snapshot = {
+            "kind": "Deployment",
+            "metadata": {"generation": 4},
+            "spec": {"replicas": 2},
+            "status": {
+                "observedGeneration": 4,
+                "replicas": 2,
+                "updatedReplicas": 2,
+                "availableReplicas": 2,
+                "unavailableReplicas": 0,
+            },
+        }
+        result = self.run_checker(json.dumps(snapshot), "--metrics")
+        self.assertEqual(result.returncode, 0, result)
+        self.assertEqual(result.stderr, "")
+        self.assertIn("rollout_state_code 0", result.stdout)
+        self.assertIn("rollout_generation_lag 0", result.stdout)
+        self.assertIn("rollout_desired_replicas 2", result.stdout)
+        self.assertIn("rollout_available_replicas 2", result.stdout)
+        self.assertIn("rollout_unavailable_replicas 0", result.stdout)
+
     def test_observed_generation_cannot_exceed_metadata_generation(self):
         snapshot = {
             "kind": "Deployment",
