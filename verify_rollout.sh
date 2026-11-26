@@ -11,8 +11,15 @@ evidence_path=${7:-}
 expected_observed_generation=${8:-}
 
 snapshot=$(mktemp)
-trap 'rm -f "$snapshot"' EXIT
-kubectl -n "$namespace" get deployment "$deployment" -o json >"$snapshot"
+capture_error=$(mktemp)
+cleanup() {
+  rm -f "$snapshot" "$capture_error"
+}
+trap cleanup EXIT
+if ! kubectl -n "$namespace" get deployment "$deployment" -o json >"$snapshot" 2>"$capture_error"; then
+  printf '%s\n' '{"state":"capture_error","exit_code":3,"message":"kubectl could not capture Deployment JSON","recommended_action":"verify kubectl access, namespace, and Deployment name"}'
+  exit 3
+fi
 if [[ -n "$evidence_path" ]]; then
   cp "$snapshot" "$evidence_path"
 fi

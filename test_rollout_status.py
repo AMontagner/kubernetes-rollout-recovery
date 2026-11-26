@@ -146,6 +146,24 @@ class RolloutStatusCLI(unittest.TestCase):
                     self.assertEqual(result.returncode, code, result)
                     self.assertEqual(report["state"], state)
 
+    def test_wrapper_reports_capture_failure_as_json(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            kubectl = Path(temp_dir) / "kubectl"
+            kubectl.write_text("#!/bin/sh\nexit 7\n")
+            kubectl.chmod(0o755)
+            environment = os.environ.copy()
+            environment["PATH"] = f"{temp_dir}{os.pathsep}{environment['PATH']}"
+            result = subprocess.run(
+                ["bash", str(WRAPPER), "rollout-recovery", "rollout-web"],
+                cwd=CHECKER.parent, env=environment, text=True,
+                capture_output=True, timeout=5,
+            )
+            report = json.loads(result.stdout)
+            self.assertEqual(result.returncode, 3, result)
+            self.assertEqual(report["state"], "capture_error")
+            self.assertEqual(report["exit_code"], 3)
+            self.assertEqual(result.stderr, "")
+
     def test_malformed_conditions_are_invalid(self):
         snapshot = {"kind": "Deployment", "metadata": {"generation": 1}, "spec": {"replicas": 1}, "status": {"observedGeneration": 1, "conditions": {"type": "Available"}}}
         result = self.run_checker(json.dumps(snapshot), "--json")

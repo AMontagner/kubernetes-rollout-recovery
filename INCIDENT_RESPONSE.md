@@ -27,6 +27,7 @@ The JSON report includes the exit code, replica counts, generation lag, unavaila
 - **Waiting (1):** the controller has not observed the latest generation, replicas are still converging, or `Available=False` is present.
 - **Stalled (2):** the progress deadline expired or Kubernetes reported `ReplicaFailure=True`. Record the condition reason and message.
 - **Invalid input (3):** the snapshot is incomplete or contains invalid counter types; recapture it.
+- **Capture error (3):** the wrapper could not read the Deployment; verify `kubectl` access, namespace, and name before recapturing.
 - **Image mismatch (4):** the recovered Deployment is healthy but does not use the expected image.
 - **Revision mismatch (5):** the recovered Deployment is healthy but does not report the expected revision annotation.
 
