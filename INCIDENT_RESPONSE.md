@@ -37,10 +37,10 @@ For a failed image rollout, inspect the current and previous revisions, then rol
 ```sh
 kubectl -n rollout-recovery rollout history deployment/rollout-web
 kubectl -n rollout-recovery rollout undo deployment/rollout-web
-./verify_rollout.sh rollout-recovery rollout-web web nginx:1.28-alpine 2 7 incident/deployment-after-rollback.json
+./verify_rollout.sh rollout-recovery rollout-web web nginx:1.28-alpine 2 7 incident/deployment-after-rollback.json 2
 ```
 
-The optional seventh argument preserves the exact `kubectl` snapshot at the supplied path before the checker runs. This keeps failed verification evidence available for triage instead of deleting the temporary capture.
+The optional seventh argument preserves the exact `kubectl` snapshot at the supplied path before the checker runs. The eighth argument asserts the controller-observed generation. This keeps failed verification evidence available for triage instead of deleting the temporary capture and prevents accepting a rollback before the controller acknowledges the target generation.
 
 Use `--expect-generation` when a known target generation is part of the change record. If the rollback target revision is known, verify it alongside the image:
 

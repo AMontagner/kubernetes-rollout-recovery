@@ -45,13 +45,13 @@ A recovered deployment reports `"state": "complete"` and exits 0. If the rollout
 For repeatable CI or incident checks, use the wrapper below. It fails fast if `kubectl` cannot capture the Deployment or if the recovered image does not match.
 
 ```sh
-./verify_rollout.sh rollout-recovery rollout-web web nginx:1.28-alpine 2 7
+./verify_rollout.sh rollout-recovery rollout-web web nginx:1.28-alpine 2 7 incident/deployment.json 2
 ```
 
-The optional seventh wrapper argument is an evidence path. When supplied, the exact Deployment JSON captured before verification is copied there even if an image or revision guard fails:
+The optional seventh wrapper argument is an evidence path and the eighth is the expected controller-observed generation. When supplied, the exact Deployment JSON captured before verification is copied there even if an image or revision guard fails, while the observed-generation guard proves the controller acknowledged the intended update:
 
 ```sh
-./verify_rollout.sh rollout-recovery rollout-web web nginx:1.28-alpine 2 7 incident/deployment.json
+./verify_rollout.sh rollout-recovery rollout-web web nginx:1.28-alpine 2 7 incident/deployment.json 2
 ```
 
 Keep that snapshot with the JSON report and rollout history so incident review can reproduce the decision from the same evidence.
