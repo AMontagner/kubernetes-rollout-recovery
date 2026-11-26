@@ -12,6 +12,7 @@ STATE_NAMES = {
     5: "revision_mismatch",
     6: "observed_generation_mismatch",
 }
+REPORT_SCHEMA_VERSION = 1
 
 
 def nonnegative_integer(value, field):
@@ -98,6 +99,7 @@ def metrics_report(code, deployment):
     generation = deployment["metadata"]["generation"]
     observed = status.get("observedGeneration", 0)
     values = {
+        "rollout_report_schema_version": REPORT_SCHEMA_VERSION,
         "rollout_state_code": code,
         "rollout_generation_lag": generation - observed,
         "rollout_desired_replicas": deployment["spec"].get("replicas", 1),
@@ -178,6 +180,7 @@ def main():
             ],
         }
         print(json.dumps({
+            "schema_version": REPORT_SCHEMA_VERSION,
             "state": state,
             "exit_code": code,
             "message": message,
