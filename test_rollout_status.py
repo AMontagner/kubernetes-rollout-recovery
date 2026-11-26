@@ -360,6 +360,21 @@ class RolloutStatusCLI(unittest.TestCase):
                 self.assertEqual(report["details"]["observed_generation"], status.get("observedGeneration", 0))
                 self.assertEqual(report["details"]["generation_lag"], 2 - status.get("observedGeneration", 0))
                 self.assertEqual(report["details"]["unavailable_replicas"], status.get("unavailableReplicas", 0))
+                verification = report["details"]["verification"]
+                self.assertEqual(verification["generation_converged"], status.get("observedGeneration", 0) == 2)
+                self.assertEqual(verification["replica_counts_converged"], all(status.get(field, 0) == 1 for field in ("updatedReplicas", "replicas", "availableReplicas")))
+                conditions = status.get("conditions", [])
+                self.assertEqual(verification["availability_condition_clear"], not any(
+                    condition.get("type") == "Available" and condition.get("status") == "False"
+                    for condition in conditions
+                ))
+                self.assertEqual(verification["failure_conditions_clear"], not any(
+                    (condition.get("type") == "ReplicaFailure" and condition.get("status") == "True")
+                    or (condition.get("type") == "Progressing" and condition.get("status") == "False" and condition.get("reason") == "ProgressDeadlineExceeded")
+                    for condition in conditions
+                ))
+                self.assertIsNone(verification["image_guard_passed"])
+                self.assertIsNone(verification["revision_guard_passed"])
 
         malformed = self.run_checker("{", "--json")
         self.assertEqual(malformed.returncode, 3)

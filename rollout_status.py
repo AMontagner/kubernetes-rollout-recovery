@@ -165,8 +165,12 @@ def main():
         print(metrics_report(code, deployment))
     elif args.json:
         state = STATE_NAMES[code]
+        desired = deployment["spec"].get("replicas", 1)
+        conditions = status.get("conditions", [])
+        image_guard_passed = None if not args.expect_image or code not in (0, 4) else code == 0
+        revision_guard_passed = None if not args.expect_revision or code not in (0, 5) else code == 0
         details = {
-            "desired_replicas": deployment["spec"].get("replicas", 1),
+            "desired_replicas": desired,
             "deployment_generation": deployment["metadata"]["generation"],
             "observed_generation": status.get("observedGeneration", 0),
             "generation_lag": deployment["metadata"]["generation"] - status.get("observedGeneration", 0),
@@ -174,6 +178,24 @@ def main():
             "updated_replicas": status.get("updatedReplicas", 0),
             "unavailable_replicas": status.get("unavailableReplicas", 0),
             "deployment_revision": revision,
+            "verification": {
+                "generation_converged": deployment["metadata"]["generation"] == status.get("observedGeneration", 0),
+                "replica_counts_converged": all(
+                    status.get(field, 0) == desired
+                    for field in ("updatedReplicas", "replicas", "availableReplicas")
+                ),
+                "availability_condition_clear": not any(
+                    condition.get("type") == "Available" and condition.get("status") == "False"
+                    for condition in conditions
+                ),
+                "failure_conditions_clear": not any(
+                    (condition.get("type") == "ReplicaFailure" and condition.get("status") == "True")
+                    or (condition.get("type") == "Progressing" and condition.get("status") == "False" and condition.get("reason") == "ProgressDeadlineExceeded")
+                    for condition in conditions
+                ),
+                "image_guard_passed": image_guard_passed,
+                "revision_guard_passed": revision_guard_passed,
+            },
             "conditions": [
                 {key: condition.get(key) for key in ("type", "status", "reason", "message") if condition.get(key) is not None}
                 for condition in status.get("conditions", [])
