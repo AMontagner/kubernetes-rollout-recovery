@@ -1,4 +1,4 @@
-.PHONY: test lint-shell fixtures verify
+.PHONY: test lint-shell fixtures metrics verify
 
 test:
 	python3 -m unittest -v
@@ -17,4 +17,12 @@ fixtures:
 		printf '%s -> exit %s (%s)\n' "$$file" "$$code" "$$state"; \
 	done
 
-verify: lint-shell fixtures test
+metrics:
+	@set -eu; \
+	output=$$(python3 rollout_status.py --metrics < fixtures/healthy.json); \
+	printf '%s\n' "$$output" | grep -Fx 'rollout_state_code 0' >/dev/null; \
+	printf '%s\n' "$$output" | grep -Fx 'rollout_generation_lag 0' >/dev/null; \
+	printf '%s\n' "$$output" | grep -Fx 'rollout_unavailable_replicas 0' >/dev/null; \
+	echo "metrics contract -> healthy"
+
+verify: lint-shell fixtures metrics test
