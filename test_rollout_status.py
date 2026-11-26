@@ -108,6 +108,25 @@ class RolloutStatusCLI(unittest.TestCase):
                     self.assertEqual(report["state"], state)
                     self.assertEqual(report["details"]["deployment_revision"], "7")
 
+    def test_wrapper_preserves_evidence_snapshot_on_failed_verification(self):
+        fixture = Path(__file__).with_name("fixtures") / "rollback-verified.json"
+        with tempfile.TemporaryDirectory() as temp_dir:
+            kubectl = Path(temp_dir) / "kubectl"
+            evidence = Path(temp_dir) / "evidence" / "deployment.json"
+            evidence.parent.mkdir()
+            kubectl.write_text(f"#!/bin/sh\ncat {shlex.quote(str(fixture))}\n")
+            kubectl.chmod(0o755)
+            environment = os.environ.copy()
+            environment["PATH"] = f"{temp_dir}{os.pathsep}{environment['PATH']}"
+            result = subprocess.run(
+                ["bash", str(WRAPPER), "rollout-recovery", "rollout-web", "web", "nginx:1.28-alpine", "4", "6", str(evidence)],
+                cwd=CHECKER.parent, env=environment, text=True,
+                capture_output=True, timeout=5,
+            )
+            self.assertEqual(result.returncode, 5, result)
+            self.assertTrue(evidence.exists())
+            self.assertEqual(json.loads(evidence.read_text())["metadata"]["generation"], 4)
+
     def test_malformed_conditions_are_invalid(self):
         snapshot = {"kind": "Deployment", "metadata": {"generation": 1}, "spec": {"replicas": 1}, "status": {"observedGeneration": 1, "conditions": {"type": "Available"}}}
         result = self.run_checker(json.dumps(snapshot), "--json")

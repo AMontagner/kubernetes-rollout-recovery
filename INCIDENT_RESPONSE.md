@@ -20,7 +20,7 @@ kubectl -n rollout-recovery get deployment rollout-web -o json > deployment-snap
 python3 rollout_status.py --json < deployment-snapshot.json
 ```
 
-The JSON report includes the exit code, replica counts, and controller conditions for incident notes.
+The JSON report includes the exit code, replica counts, generation lag, unavailable replica count, and controller conditions for incident notes. Preserve the snapshot as evidence; it is the input used for every later decision.
 
 ## 2. Classify the failure
 
@@ -37,8 +37,10 @@ For a failed image rollout, inspect the current and previous revisions, then rol
 ```sh
 kubectl -n rollout-recovery rollout history deployment/rollout-web
 kubectl -n rollout-recovery rollout undo deployment/rollout-web
-./verify_rollout.sh rollout-recovery rollout-web web nginx:1.28-alpine
+./verify_rollout.sh rollout-recovery rollout-web web nginx:1.28-alpine 2 7 incident/deployment-after-rollback.json
 ```
+
+The optional seventh argument preserves the exact `kubectl` snapshot at the supplied path before the checker runs. This keeps failed verification evidence available for triage instead of deleting the temporary capture.
 
 Use `--expect-generation` when a known target generation is part of the change record. If the rollback target revision is known, verify it alongside the image:
 

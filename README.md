@@ -48,6 +48,14 @@ For repeatable CI or incident checks, use the wrapper below. It fails fast if `k
 ./verify_rollout.sh rollout-recovery rollout-web web nginx:1.28-alpine 2 7
 ```
 
+The optional seventh wrapper argument is an evidence path. When supplied, the exact Deployment JSON captured before verification is copied there even if an image or revision guard fails:
+
+```sh
+./verify_rollout.sh rollout-recovery rollout-web web nginx:1.28-alpine 2 7 incident/deployment.json
+```
+
+Keep that snapshot with the JSON report and rollout history so incident review can reproduce the decision from the same evidence.
+
 When finished, remove the example Deployment.
 
 ```sh
