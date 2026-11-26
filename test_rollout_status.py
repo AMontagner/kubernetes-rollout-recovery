@@ -185,6 +185,18 @@ class RolloutStatusCLI(unittest.TestCase):
                 self.assertEqual(result.stdout, "")
                 self.assertIn("status.conditions must be a list of objects", result.stderr)
 
+    def test_malformed_conditions_do_not_bypass_stale_generation(self):
+        snapshot = {
+            "kind": "Deployment",
+            "metadata": {"generation": 2},
+            "spec": {"replicas": 1},
+            "status": {"observedGeneration": 1, "conditions": {"type": "Available"}},
+        }
+        result = self.run_checker(json.dumps(snapshot), "--json")
+        self.assertEqual(result.returncode, 3, result)
+        self.assertEqual(result.stdout, "")
+        self.assertIn("status.conditions must be a list of objects", result.stderr)
+
     def test_malformed_revision_annotations_are_invalid(self):
         for annotations, error in (
             ([], "metadata.annotations must be an object"),

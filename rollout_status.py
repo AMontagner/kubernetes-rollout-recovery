@@ -46,6 +46,7 @@ def classify(deployment):
     observed = nonnegative_integer(status.get("observedGeneration", 0), "status.observedGeneration")
     if observed > generation:
         raise ValueError("status.observedGeneration cannot exceed metadata.generation")
+    conditions = validate_conditions(status.get("conditions", []))
     replica_counts = [
         nonnegative_integer(status.get(field, 0), f"status.{field}")
         for field in ("updatedReplicas", "replicas", "availableReplicas")
@@ -53,7 +54,6 @@ def classify(deployment):
     unavailable = nonnegative_integer(status.get("unavailableReplicas", 0), "status.unavailableReplicas")
     if observed < generation:
         return 1, "waiting for controller to observe the latest generation"
-    conditions = validate_conditions(status.get("conditions", []))
     if any(
         condition.get("type") == "Progressing"
         and condition.get("status") == "False"
