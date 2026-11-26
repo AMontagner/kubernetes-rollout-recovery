@@ -8,6 +8,7 @@ These fixtures make the recovery decision observable without a cluster.
 | Stalled rollout | `Progressing=False` with `ProgressDeadlineExceeded` | Exit 2 / `stalled` | Inspect events and revision history |
 | Replica creation failure | `ReplicaFailure=True` | Exit 2 / `stalled` | Capture the reason/message before rollback |
 | Converging rollout | Observed generation or replica counts lag | Exit 1 / `waiting` | Recheck with a fresh snapshot |
+| Unavailable replicas | `unavailableReplicas` is nonzero | Exit 1 / `waiting` | Track the reported count until pods recover |
 | Wrong recovery image | Healthy counters but unexpected template image | Exit 4 / `image_mismatch` | Stop promotion and correct the image reference |
 | Wrong recovery revision | Healthy counters but unexpected Deployment revision annotation | Exit 5 / `revision_mismatch` | Stop promotion and reconcile rollout history |
 

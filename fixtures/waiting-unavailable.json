@@ -1,0 +1,23 @@
+{
+  "kind": "Deployment",
+  "metadata": {
+    "generation": 9
+  },
+  "spec": {
+    "replicas": 2
+  },
+  "status": {
+    "observedGeneration": 9,
+    "replicas": 2,
+    "updatedReplicas": 2,
+    "availableReplicas": 1,
+    "unavailableReplicas": 1,
+    "conditions": [
+      {
+        "type": "Progressing",
+        "status": "True",
+        "reason": "ReplicaSetUpdated"
+      }
+    ]
+  }
+}

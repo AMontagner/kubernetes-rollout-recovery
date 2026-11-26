@@ -39,6 +39,7 @@ def classify(deployment):
         nonnegative_integer(status.get(field, 0), f"status.{field}")
         for field in ("updatedReplicas", "replicas", "availableReplicas")
     ]
+    unavailable = nonnegative_integer(status.get("unavailableReplicas", 0), "status.unavailableReplicas")
     if observed < generation:
         return 1, "waiting for controller to observe the latest generation"
     conditions = validate_conditions(status.get("conditions", []))
@@ -64,6 +65,8 @@ def classify(deployment):
         detail = replica_failure.get("reason") or replica_failure.get("message")
         suffix = f": {detail}" if detail else ""
         return 2, f"Deployment reported a replica failure{suffix}"
+    if unavailable:
+        return 1, f"waiting for {unavailable} unavailable replica{'s' if unavailable != 1 else ''} to recover"
     if all(count == desired for count in replica_counts):
         return 0, f"rollout complete: {desired} updated and available replicas"
     return 1, "waiting for updated replicas to become available and old replicas to terminate"
@@ -125,6 +128,7 @@ def main():
             "generation_lag": deployment["metadata"]["generation"] - status.get("observedGeneration", 0),
             "available_replicas": status.get("availableReplicas", 0),
             "updated_replicas": status.get("updatedReplicas", 0),
+            "unavailable_replicas": status.get("unavailableReplicas", 0),
             "deployment_revision": revision,
             "conditions": [
                 {key: condition.get(key) for key in ("type", "status", "reason", "message") if condition.get(key) is not None}

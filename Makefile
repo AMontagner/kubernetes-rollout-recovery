@@ -8,7 +8,7 @@ lint-shell:
 
 fixtures:
 	@set -eu; \
-	for spec in "healthy.json 0 complete" "stalled-replica-failure.json 2 stalled" "waiting-available.json 1 waiting" "stale-generation.json 1 waiting"; do \
+	for spec in "healthy.json 0 complete" "stalled-replica-failure.json 2 stalled" "waiting-available.json 1 waiting" "waiting-unavailable.json 1 waiting" "stale-generation.json 1 waiting"; do \
 		set -- $$spec; file=$$1; expected_code=$$2; expected_state=$$3; \
 		code=0; output=$$(python3 rollout_status.py --json < fixtures/$$file) || code=$$?; \
 		test "$$code" -eq "$$expected_code" || { echo "$$file: expected exit $$expected_code, got $$code" >&2; exit 1; }; \

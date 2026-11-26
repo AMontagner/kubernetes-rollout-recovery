@@ -66,6 +66,7 @@ class RolloutStatusCLI(unittest.TestCase):
             ("healthy.json", 0, "complete"),
             ("stalled-replica-failure.json", 2, "stalled"),
             ("waiting-available.json", 1, "waiting"),
+            ("waiting-unavailable.json", 1, "waiting"),
             ("stale-generation.json", 1, "waiting"),
         )
         for filename, code, state in cases:
@@ -153,6 +154,26 @@ class RolloutStatusCLI(unittest.TestCase):
         self.assertIn("FailedCreate", report["message"])
         self.assertEqual(report["details"]["conditions"][0]["reason"], "FailedCreate")
         self.assertEqual(report["details"]["conditions"][0]["message"], "quota exceeded")
+
+    def test_unavailable_replica_detail_in_json(self):
+        snapshot = {
+            "kind": "Deployment",
+            "metadata": {"generation": 3},
+            "spec": {"replicas": 2},
+            "status": {
+                "observedGeneration": 3,
+                "replicas": 2,
+                "updatedReplicas": 2,
+                "availableReplicas": 1,
+                "unavailableReplicas": 1,
+            },
+        }
+        result = self.run_checker(json.dumps(snapshot), "--json")
+        report = json.loads(result.stdout)
+        self.assertEqual(result.returncode, 1, result)
+        self.assertEqual(report["state"], "waiting")
+        self.assertEqual(report["details"]["unavailable_replicas"], 1)
+        self.assertIn("1 unavailable replica to recover", report["message"])
 
     def test_expect_generation(self):
         snapshot = {"kind": "Deployment", "metadata": {"generation": 4}, "spec": {"replicas": 0}, "status": {"observedGeneration": 4}}
@@ -263,6 +284,7 @@ class RolloutStatusCLI(unittest.TestCase):
                 self.assertEqual(report["details"]["deployment_generation"], 2)
                 self.assertEqual(report["details"]["observed_generation"], status.get("observedGeneration", 0))
                 self.assertEqual(report["details"]["generation_lag"], 2 - status.get("observedGeneration", 0))
+                self.assertEqual(report["details"]["unavailable_replicas"], status.get("unavailableReplicas", 0))
 
         malformed = self.run_checker("{", "--json")
         self.assertEqual(malformed.returncode, 3)
