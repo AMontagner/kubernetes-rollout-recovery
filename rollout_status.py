@@ -33,6 +33,8 @@ def classify(deployment):
     desired = nonnegative_integer(deployment["spec"].get("replicas", 1), "spec.replicas")
     status = deployment.get("status", {})
     observed = nonnegative_integer(status.get("observedGeneration", 0), "status.observedGeneration")
+    if observed > generation:
+        raise ValueError("status.observedGeneration cannot exceed metadata.generation")
     replica_counts = [
         nonnegative_integer(status.get(field, 0), f"status.{field}")
         for field in ("updatedReplicas", "replicas", "availableReplicas")
@@ -120,6 +122,7 @@ def main():
             "desired_replicas": deployment["spec"].get("replicas", 1),
             "deployment_generation": deployment["metadata"]["generation"],
             "observed_generation": status.get("observedGeneration", 0),
+            "generation_lag": deployment["metadata"]["generation"] - status.get("observedGeneration", 0),
             "available_replicas": status.get("availableReplicas", 0),
             "updated_replicas": status.get("updatedReplicas", 0),
             "deployment_revision": revision,

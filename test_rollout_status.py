@@ -262,11 +262,24 @@ class RolloutStatusCLI(unittest.TestCase):
                 self.assertEqual(report["details"]["desired_replicas"], 1)
                 self.assertEqual(report["details"]["deployment_generation"], 2)
                 self.assertEqual(report["details"]["observed_generation"], status.get("observedGeneration", 0))
+                self.assertEqual(report["details"]["generation_lag"], 2 - status.get("observedGeneration", 0))
 
         malformed = self.run_checker("{", "--json")
         self.assertEqual(malformed.returncode, 3)
         self.assertEqual(malformed.stdout, "")
         self.assertIn("invalid Deployment snapshot", malformed.stderr)
+
+    def test_observed_generation_cannot_exceed_metadata_generation(self):
+        snapshot = {
+            "kind": "Deployment",
+            "metadata": {"generation": 2},
+            "spec": {"replicas": 1},
+            "status": {"observedGeneration": 3},
+        }
+        result = self.run_checker(json.dumps(snapshot), "--json")
+        self.assertEqual(result.returncode, 3, result)
+        self.assertEqual(result.stdout, "")
+        self.assertIn("status.observedGeneration cannot exceed metadata.generation", result.stderr)
 
     def test_invalid_counters(self):
         fields = {
