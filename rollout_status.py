@@ -10,6 +10,7 @@ STATE_NAMES = {
     2: "stalled",
     4: "image_mismatch",
     5: "revision_mismatch",
+    6: "observed_generation_mismatch",
 }
 
 
@@ -88,6 +89,7 @@ def recommended_action(code):
         2: "inspect Pod events and initiate rollback or remediation",
         4: "verify the recovered image and Deployment template before proceeding",
         5: "verify the rollback revision annotation and Deployment history before proceeding",
+        6: "wait for the controller to observe the expected Deployment generation",
     }[code]
 
 
@@ -120,6 +122,7 @@ def main():
     output.add_argument("--json", action="store_true", help="emit a JSON result on stdout")
     output.add_argument("--metrics", action="store_true", help="emit OpenMetrics-style gauges on stdout")
     parser.add_argument("--expect-generation", type=int, help="require an exact Deployment metadata.generation")
+    parser.add_argument("--expect-observed-generation", type=int, help="require an exact controller-observed generation")
     parser.add_argument("--expect-revision", help="require an exact Deployment revision annotation after recovery")
     parser.add_argument(
         "--expect-image", nargs=2, metavar=("CONTAINER", "IMAGE"),
@@ -130,9 +133,13 @@ def main():
         deployment = json.load(sys.stdin)
         code, message = classify(deployment)
         revision = deployment_revision(deployment)
+        status = deployment.get("status", {})
         if args.expect_generation is not None and deployment["metadata"]["generation"] != args.expect_generation:
             code = 1
             message = f"snapshot generation {deployment["metadata"]["generation"]}, expected {args.expect_generation}"
+        if args.expect_observed_generation is not None and status.get("observedGeneration", 0) != args.expect_observed_generation:
+            code = 6
+            message = f"observed generation {status.get('observedGeneration', 0)}, expected {args.expect_observed_generation}"
         if code == 0 and args.expect_image:
             name, expected = args.expect_image
             containers = deployment["spec"]["template"]["spec"]["containers"]
@@ -156,7 +163,6 @@ def main():
         print(metrics_report(code, deployment))
     elif args.json:
         state = STATE_NAMES[code]
-        status = deployment.get("status", {})
         details = {
             "desired_replicas": deployment["spec"].get("replicas", 1),
             "deployment_generation": deployment["metadata"]["generation"],

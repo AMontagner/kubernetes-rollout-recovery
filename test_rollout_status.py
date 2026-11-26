@@ -203,6 +203,24 @@ class RolloutStatusCLI(unittest.TestCase):
                 self.assertEqual(result.returncode, code, result)
                 self.assertEqual(report["state"], state)
 
+    def test_expect_observed_generation(self):
+        snapshot = {
+            "kind": "Deployment",
+            "metadata": {"generation": 4},
+            "spec": {"replicas": 0},
+            "status": {"observedGeneration": 4},
+        }
+        for expected, code, state, detail in (
+            (4, 0, "complete", "no action required"),
+            (3, 6, "observed_generation_mismatch", "observed generation 4, expected 3"),
+        ):
+            with self.subTest(expected=expected):
+                result = self.run_checker(json.dumps(snapshot), "--expect-observed-generation", str(expected), "--json")
+                report = json.loads(result.stdout)
+                self.assertEqual(result.returncode, code, result)
+                self.assertEqual(report["state"], state)
+                self.assertIn(detail, report["recommended_action"] if code == 0 else report["message"])
+
     def test_verify_rollback_revision(self):
         snapshot = {
             "kind": "Deployment",

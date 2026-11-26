@@ -11,5 +11,6 @@ These fixtures make the recovery decision observable without a cluster.
 | Unavailable replicas | `unavailableReplicas` is nonzero | Exit 1 / `waiting` | Track the reported count until pods recover |
 | Wrong recovery image | Healthy counters but unexpected template image | Exit 4 / `image_mismatch` | Stop promotion and correct the image reference |
 | Wrong recovery revision | Healthy counters but unexpected Deployment revision annotation | Exit 5 / `revision_mismatch` | Stop promotion and reconcile rollout history |
+| Controller has not acknowledged target | Observed generation differs from the change record | Exit 6 / `observed_generation_mismatch` | Wait for reconciliation and capture a fresh snapshot |
 
 The checker deliberately separates **waiting** from **stalled** so automation can retry transient convergence but page an operator for a controller failure. Image and revision checks make rollback verification explicit; both must match before promotion resumes. The JSON details preserve replica counts, the deployment revision, and condition reasons for the incident timeline.
