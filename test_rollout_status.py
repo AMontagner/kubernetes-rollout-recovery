@@ -203,13 +203,15 @@ class RolloutStatusCLI(unittest.TestCase):
                 self.assertIn(error, result.stderr)
 
     def test_replica_failure_detail_in_json(self):
-        snapshot = {"kind": "Deployment", "metadata": {"generation": 3}, "spec": {"replicas": 1}, "status": {"observedGeneration": 3, "conditions": [{"type": "ReplicaFailure", "status": "True", "reason": "FailedCreate", "message": "quota exceeded"}]}}
+        snapshot = {"kind": "Deployment", "metadata": {"generation": 3}, "spec": {"replicas": 1}, "status": {"observedGeneration": 3, "conditions": [{"type": "ReplicaFailure", "status": "True", "reason": "FailedCreate", "message": "quota exceeded", "lastUpdateTime": "2026-11-26T19:00:00Z", "lastTransitionTime": "2026-11-26T18:59:00Z"}]}}
         result = self.run_checker(json.dumps(snapshot), "--json")
         report = json.loads(result.stdout)
         self.assertEqual(result.returncode, 2, result)
         self.assertIn("FailedCreate", report["message"])
         self.assertEqual(report["details"]["conditions"][0]["reason"], "FailedCreate")
         self.assertEqual(report["details"]["conditions"][0]["message"], "quota exceeded")
+        self.assertEqual(report["details"]["conditions"][0]["lastUpdateTime"], "2026-11-26T19:00:00Z")
+        self.assertEqual(report["details"]["conditions"][0]["lastTransitionTime"], "2026-11-26T18:59:00Z")
 
     def test_unavailable_replica_detail_in_json(self):
         snapshot = {

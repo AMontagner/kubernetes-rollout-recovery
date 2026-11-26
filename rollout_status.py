@@ -197,7 +197,7 @@ def main():
                 "revision_guard_passed": revision_guard_passed,
             },
             "conditions": [
-                {key: condition.get(key) for key in ("type", "status", "reason", "message") if condition.get(key) is not None}
+                {key: condition.get(key) for key in ("type", "status", "reason", "message", "lastUpdateTime", "lastTransitionTime") if condition.get(key) is not None}
                 for condition in status.get("conditions", [])
             ],
         }
