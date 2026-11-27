@@ -100,22 +100,28 @@ def recommended_action(code):
     }[code]
 
 
-def metrics_report(code, deployment):
+def metrics_report(code, deployment, min_ready_replicas=None, max_generation_lag=None):
     status = deployment.get("status", {})
     generation = deployment["metadata"]["generation"]
     observed = status.get("observedGeneration", 0)
+    ready = status.get("readyReplicas", status.get("availableReplicas", 0))
+    generation_lag = generation - observed
     values = {
         "rollout_report_schema_version": REPORT_SCHEMA_VERSION,
         "rollout_state_code": code,
-        "rollout_generation_lag": generation - observed,
+        "rollout_generation_lag": generation_lag,
         "rollout_desired_replicas": deployment["spec"].get("replicas", 1),
         "rollout_available_replicas": status.get("availableReplicas", 0),
-        "rollout_ready_replicas": status.get("readyReplicas", status.get("availableReplicas", 0)),
+        "rollout_ready_replicas": ready,
         "rollout_ready_gap": max(
             deployment["spec"].get("replicas", 1)
-            - status.get("readyReplicas", status.get("availableReplicas", 0)),
+            - ready,
             0,
         ),
+        "rollout_min_ready_replicas": -1 if min_ready_replicas is None else min_ready_replicas,
+        "rollout_ready_guard_passed": -1 if min_ready_replicas is None else int(ready >= min_ready_replicas),
+        "rollout_max_generation_lag": -1 if max_generation_lag is None else max_generation_lag,
+        "rollout_generation_lag_guard_passed": -1 if max_generation_lag is None else int(generation_lag <= max_generation_lag),
         "rollout_updated_replicas": status.get("updatedReplicas", 0),
         "rollout_unavailable_replicas": status.get("unavailableReplicas", 0),
     }
@@ -200,7 +206,7 @@ def main():
         print(f"invalid Deployment snapshot: {error}", file=sys.stderr)
         return 3
     if args.metrics:
-        print(metrics_report(code, deployment))
+        print(metrics_report(code, deployment, args.min_ready_replicas, args.max_generation_lag))
     elif args.json:
         state = STATE_NAMES[code]
         desired = deployment["spec"].get("replicas", 1)

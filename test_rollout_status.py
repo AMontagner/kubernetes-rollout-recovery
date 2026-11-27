@@ -517,7 +517,31 @@ class RolloutStatusCLI(unittest.TestCase):
         self.assertIn("rollout_available_replicas 2", result.stdout)
         self.assertIn("rollout_ready_replicas 1", result.stdout)
         self.assertIn("rollout_ready_gap 1", result.stdout)
+        self.assertIn("rollout_ready_guard_passed -1", result.stdout)
+        self.assertIn("rollout_generation_lag_guard_passed -1", result.stdout)
         self.assertIn("rollout_unavailable_replicas 0", result.stdout)
+
+    def test_metrics_policy_contract(self):
+        snapshot = {
+            "kind": "Deployment",
+            "metadata": {"generation": 4},
+            "spec": {"replicas": 2},
+            "status": {
+                "observedGeneration": 3,
+                "replicas": 2,
+                "updatedReplicas": 2,
+                "availableReplicas": 2,
+                "readyReplicas": 1,
+            },
+        }
+        result = self.run_checker(
+            json.dumps(snapshot), "--metrics", "--min-ready-replicas", "2", "--max-generation-lag", "0"
+        )
+        self.assertEqual(result.returncode, 6, result)
+        self.assertIn("rollout_min_ready_replicas 2", result.stdout)
+        self.assertIn("rollout_ready_guard_passed 0", result.stdout)
+        self.assertIn("rollout_max_generation_lag 0", result.stdout)
+        self.assertIn("rollout_generation_lag_guard_passed 0", result.stdout)
 
     def test_ready_replica_detail_and_backward_compatibility(self):
         snapshot = {
