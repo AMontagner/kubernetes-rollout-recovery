@@ -27,6 +27,25 @@ def validate_conditions(conditions):
     return conditions
 
 
+def condition_summary(conditions):
+    return {
+        "available_false": sum(
+            condition.get("type") == "Available" and condition.get("status") == "False"
+            for condition in conditions
+        ),
+        "replica_failure_true": sum(
+            condition.get("type") == "ReplicaFailure" and condition.get("status") == "True"
+            for condition in conditions
+        ),
+        "progress_deadline_exceeded": sum(
+            condition.get("type") == "Progressing"
+            and condition.get("status") == "False"
+            and condition.get("reason") == "ProgressDeadlineExceeded"
+            for condition in conditions
+        ),
+    }
+
+
 def deployment_revision(deployment):
     annotations = deployment["metadata"].get("annotations", {})
     if type(annotations) is not dict:
@@ -245,6 +264,7 @@ def main():
             "updated_replicas": status.get("updatedReplicas", 0),
             "unavailable_replicas": status.get("unavailableReplicas", 0),
             "deployment_revision": revision,
+            "condition_summary": condition_summary(conditions),
             "verification": {
                 "generation_converged": deployment["metadata"]["generation"] == status.get("observedGeneration", 0),
                 "replica_counts_converged": all(

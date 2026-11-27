@@ -224,6 +224,8 @@ class RolloutStatusCLI(unittest.TestCase):
         self.assertEqual(report["details"]["conditions"][0]["message"], "quota exceeded")
         self.assertEqual(report["details"]["conditions"][0]["lastUpdateTime"], "2026-11-26T19:00:00Z")
         self.assertEqual(report["details"]["conditions"][0]["lastTransitionTime"], "2026-11-26T18:59:00Z")
+        self.assertEqual(report["details"]["condition_summary"]["replica_failure_true"], 1)
+        self.assertEqual(report["details"]["condition_summary"]["available_false"], 0)
 
     def test_unavailable_replica_detail_in_json(self):
         snapshot = {
@@ -486,6 +488,11 @@ class RolloutStatusCLI(unittest.TestCase):
                 self.assertIsNone(verification["ready_guard_passed"])
                 self.assertIsNone(verification["generation_lag_guard_passed"])
                 self.assertEqual(report["details"]["policy"], {"min_ready_replicas": None, "max_generation_lag": None})
+                summary = report["details"]["condition_summary"]
+                self.assertEqual(summary["available_false"], sum(
+                    condition.get("type") == "Available" and condition.get("status") == "False"
+                    for condition in status.get("conditions", [])
+                ))
 
         malformed = self.run_checker("{", "--json")
         self.assertEqual(malformed.returncode, 3)
