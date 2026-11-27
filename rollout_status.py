@@ -151,6 +151,8 @@ def main():
         help="verify that a named container uses the expected image after recovery",
     )
     args = parser.parse_args()
+    ready_guard_passed = None
+    generation_lag_guard_passed = None
     try:
         deployment = json.load(sys.stdin)
         code, message = classify(deployment)
@@ -160,6 +162,7 @@ def main():
         if args.max_generation_lag is not None:
             if args.max_generation_lag < 0:
                 raise ValueError("--max-generation-lag must be nonnegative")
+            generation_lag_guard_passed = generation_lag <= args.max_generation_lag
             if code in (0, 1) and generation_lag > args.max_generation_lag:
                 code = 6
                 message = f"generation lag {generation_lag}, expected at most {args.max_generation_lag}"
@@ -189,6 +192,7 @@ def main():
             if args.min_ready_replicas < 0:
                 raise ValueError("--min-ready-replicas must be nonnegative")
             ready = status.get("readyReplicas", status.get("availableReplicas", 0))
+            ready_guard_passed = ready >= args.min_ready_replicas
             if code == 0 and ready < args.min_ready_replicas:
                 code = 1
                 message = f"ready replicas {ready}, expected at least {args.min_ready_replicas}"
@@ -234,6 +238,8 @@ def main():
                 ),
                 "image_guard_passed": image_guard_passed,
                 "revision_guard_passed": revision_guard_passed,
+                "ready_guard_passed": ready_guard_passed,
+                "generation_lag_guard_passed": generation_lag_guard_passed,
             },
             "conditions": [
                 {key: condition.get(key) for key in ("type", "status", "reason", "message", "lastUpdateTime", "lastTransitionTime") if condition.get(key) is not None}
