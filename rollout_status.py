@@ -125,6 +125,7 @@ def metrics_report(code, deployment, min_ready_replicas=None, max_generation_lag
     observed = status.get("observedGeneration", 0)
     ready = status.get("readyReplicas", status.get("availableReplicas", 0))
     generation_lag = generation - observed
+    summary = condition_summary(status.get("conditions", []))
     values = {
         "rollout_report_schema_version": REPORT_SCHEMA_VERSION,
         "rollout_state_code": code,
@@ -141,6 +142,9 @@ def metrics_report(code, deployment, min_ready_replicas=None, max_generation_lag
         "rollout_ready_guard_passed": -1 if min_ready_replicas is None else int(ready >= min_ready_replicas),
         "rollout_max_generation_lag": -1 if max_generation_lag is None else max_generation_lag,
         "rollout_generation_lag_guard_passed": -1 if max_generation_lag is None else int(generation_lag <= max_generation_lag),
+        "rollout_available_condition_false": summary["available_false"],
+        "rollout_replica_failure_true": summary["replica_failure_true"],
+        "rollout_progress_deadline_exceeded": summary["progress_deadline_exceeded"],
         "rollout_updated_replicas": status.get("updatedReplicas", 0),
         "rollout_unavailable_replicas": status.get("unavailableReplicas", 0),
     }
@@ -165,6 +169,9 @@ def metrics_report(code, deployment, min_ready_replicas=None, max_generation_lag
         "rollout_ready_guard_passed": "Minimum Ready replica guard result: 1 pass, 0 fail, -1 unset.",
         "rollout_max_generation_lag": "Configured maximum generation lag policy, or -1 when unset.",
         "rollout_generation_lag_guard_passed": "Generation lag guard result: 1 pass, 0 fail, -1 unset.",
+        "rollout_available_condition_false": "Count of Available=False Deployment conditions.",
+        "rollout_replica_failure_true": "Count of ReplicaFailure=True Deployment conditions.",
+        "rollout_progress_deadline_exceeded": "Count of ProgressDeadlineExceeded conditions.",
         "rollout_updated_replicas": "Deployment replicas updated to the current template.",
         "rollout_unavailable_replicas": "Deployment replicas currently unavailable.",
     }

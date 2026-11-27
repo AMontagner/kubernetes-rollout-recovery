@@ -527,6 +527,9 @@ class RolloutStatusCLI(unittest.TestCase):
         self.assertIn("rollout_ready_guard_passed -1", result.stdout)
         self.assertIn("rollout_generation_lag_guard_passed -1", result.stdout)
         self.assertIn("# HELP rollout_ready_gap Desired replicas minus Ready replicas, clamped at zero.", result.stdout)
+        self.assertIn("rollout_available_condition_false 0", result.stdout)
+        self.assertIn("rollout_replica_failure_true 0", result.stdout)
+        self.assertIn("rollout_progress_deadline_exceeded 0", result.stdout)
         self.assertIn("rollout_unavailable_replicas 0", result.stdout)
 
     def test_metrics_policy_contract(self):
@@ -550,6 +553,26 @@ class RolloutStatusCLI(unittest.TestCase):
         self.assertIn("rollout_ready_guard_passed 0", result.stdout)
         self.assertIn("rollout_max_generation_lag 0", result.stdout)
         self.assertIn("rollout_generation_lag_guard_passed 0", result.stdout)
+
+    def test_metrics_condition_summary_contract(self):
+        snapshot = {
+            "kind": "Deployment",
+            "metadata": {"generation": 3},
+            "spec": {"replicas": 1},
+            "status": {
+                "observedGeneration": 3,
+                "conditions": [
+                    {"type": "Progressing", "status": "False", "reason": "ProgressDeadlineExceeded"},
+                    {"type": "ReplicaFailure", "status": "True", "reason": "FailedCreate"},
+                    {"type": "Available", "status": "False"},
+                ],
+            },
+        }
+        result = self.run_checker(json.dumps(snapshot), "--metrics")
+        self.assertEqual(result.returncode, 2, result)
+        self.assertIn("rollout_available_condition_false 1", result.stdout)
+        self.assertIn("rollout_replica_failure_true 1", result.stdout)
+        self.assertIn("rollout_progress_deadline_exceeded 1", result.stdout)
 
     def test_ready_replica_detail_and_backward_compatibility(self):
         snapshot = {
