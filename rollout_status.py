@@ -135,9 +135,23 @@ def metrics_report(code, deployment, min_ready_replicas=None, max_generation_lag
         "# TYPE rollout_state_info gauge",
         f'rollout_state_info{{state="{state}"}} 1',
     ])
+    help_text = {
+        "rollout_report_schema_version": "JSON and metrics report schema version.",
+        "rollout_generation_lag": "Metadata generation minus controller-observed generation.",
+        "rollout_desired_replicas": "Desired Deployment replica count.",
+        "rollout_available_replicas": "Deployment replicas available for service.",
+        "rollout_ready_replicas": "Deployment replicas currently reporting Ready.",
+        "rollout_ready_gap": "Desired replicas minus Ready replicas, clamped at zero.",
+        "rollout_min_ready_replicas": "Configured minimum Ready replica policy, or -1 when unset.",
+        "rollout_ready_guard_passed": "Minimum Ready replica guard result: 1 pass, 0 fail, -1 unset.",
+        "rollout_max_generation_lag": "Configured maximum generation lag policy, or -1 when unset.",
+        "rollout_generation_lag_guard_passed": "Generation lag guard result: 1 pass, 0 fail, -1 unset.",
+        "rollout_updated_replicas": "Deployment replicas updated to the current template.",
+        "rollout_unavailable_replicas": "Deployment replicas currently unavailable.",
+    }
     for name, value in values.items():
         if name != "rollout_state_code":
-            lines.extend([f"# TYPE {name} gauge"])
+            lines.extend([f"# HELP {name} {help_text[name]}", f"# TYPE {name} gauge"])
         lines.append(f"{name} {value}")
     return "\n".join(lines)
 

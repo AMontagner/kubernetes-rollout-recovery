@@ -519,6 +519,7 @@ class RolloutStatusCLI(unittest.TestCase):
         self.assertIn("rollout_ready_gap 1", result.stdout)
         self.assertIn("rollout_ready_guard_passed -1", result.stdout)
         self.assertIn("rollout_generation_lag_guard_passed -1", result.stdout)
+        self.assertIn("# HELP rollout_ready_gap Desired replicas minus Ready replicas, clamped at zero.", result.stdout)
         self.assertIn("rollout_unavailable_replicas 0", result.stdout)
 
     def test_metrics_policy_contract(self):
