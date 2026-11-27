@@ -108,9 +108,15 @@ def metrics_report(code, deployment):
         "rollout_unavailable_replicas": status.get("unavailableReplicas", 0),
     }
     lines = [
-        "# HELP rollout_state_code Checker result code (0 complete, 1 waiting, 2 stalled, 4 image mismatch, 5 revision mismatch).",
+        "# HELP rollout_state_code Checker result code (0 complete, 1 waiting, 2 stalled, 4 image mismatch, 5 revision mismatch, 6 observed-generation mismatch).",
         "# TYPE rollout_state_code gauge",
     ]
+    state = STATE_NAMES[code]
+    lines.extend([
+        "# HELP rollout_state_info Current rollout state as a readable label.",
+        "# TYPE rollout_state_info gauge",
+        f'rollout_state_info{{state="{state}"}} 1',
+    ])
     for name, value in values.items():
         if name != "rollout_state_code":
             lines.extend([f"# TYPE {name} gauge"])

@@ -413,6 +413,7 @@ class RolloutStatusCLI(unittest.TestCase):
         self.assertEqual(result.stderr, "")
         self.assertIn("rollout_report_schema_version 1", result.stdout)
         self.assertIn("rollout_state_code 0", result.stdout)
+        self.assertIn('rollout_state_info{state="complete"} 1', result.stdout)
         self.assertIn("rollout_generation_lag 0", result.stdout)
         self.assertIn("rollout_desired_replicas 2", result.stdout)
         self.assertIn("rollout_available_replicas 2", result.stdout)
