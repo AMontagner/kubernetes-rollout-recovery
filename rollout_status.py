@@ -111,6 +111,11 @@ def metrics_report(code, deployment):
         "rollout_desired_replicas": deployment["spec"].get("replicas", 1),
         "rollout_available_replicas": status.get("availableReplicas", 0),
         "rollout_ready_replicas": status.get("readyReplicas", status.get("availableReplicas", 0)),
+        "rollout_ready_gap": max(
+            deployment["spec"].get("replicas", 1)
+            - status.get("readyReplicas", status.get("availableReplicas", 0)),
+            0,
+        ),
         "rollout_updated_replicas": status.get("updatedReplicas", 0),
         "rollout_unavailable_replicas": status.get("unavailableReplicas", 0),
     }
@@ -189,6 +194,10 @@ def main():
             "generation_lag": deployment["metadata"]["generation"] - status.get("observedGeneration", 0),
             "available_replicas": status.get("availableReplicas", 0),
             "ready_replicas": status.get("readyReplicas", status.get("availableReplicas", 0)),
+            "ready_gap": max(
+                desired - status.get("readyReplicas", status.get("availableReplicas", 0)),
+                0,
+            ),
             "updated_replicas": status.get("updatedReplicas", 0),
             "unavailable_replicas": status.get("unavailableReplicas", 0),
             "deployment_revision": revision,

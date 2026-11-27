@@ -419,6 +419,7 @@ class RolloutStatusCLI(unittest.TestCase):
         self.assertIn("rollout_desired_replicas 2", result.stdout)
         self.assertIn("rollout_available_replicas 2", result.stdout)
         self.assertIn("rollout_ready_replicas 1", result.stdout)
+        self.assertIn("rollout_ready_gap 1", result.stdout)
         self.assertIn("rollout_unavailable_replicas 0", result.stdout)
 
     def test_ready_replica_detail_and_backward_compatibility(self):
@@ -436,13 +437,17 @@ class RolloutStatusCLI(unittest.TestCase):
         }
         result = self.run_checker(json.dumps(snapshot), "--json")
         self.assertEqual(result.returncode, 0, result)
-        self.assertEqual(json.loads(result.stdout)["details"]["ready_replicas"], 1)
+        report = json.loads(result.stdout)
+        self.assertEqual(report["details"]["ready_replicas"], 1)
+        self.assertEqual(report["details"]["ready_gap"], 1)
 
         legacy = dict(snapshot)
         legacy["status"] = {key: value for key, value in snapshot["status"].items() if key != "readyReplicas"}
         result = self.run_checker(json.dumps(legacy), "--json")
         self.assertEqual(result.returncode, 0, result)
-        self.assertEqual(json.loads(result.stdout)["details"]["ready_replicas"], 2)
+        report = json.loads(result.stdout)
+        self.assertEqual(report["details"]["ready_replicas"], 2)
+        self.assertEqual(report["details"]["ready_gap"], 0)
 
     def test_invalid_ready_replica_count(self):
         snapshot = {
