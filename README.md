@@ -79,7 +79,7 @@ The healthy fixture exits 0. The stalled fixture exits 2 and preserves the contr
 
 ## Repeatable local validation
 
-Run the same checks used by CI with `make verify`. This validates the shell wrapper, executes every committed fixture against its expected exit code and state, checks the OpenMetrics contract on a healthy snapshot, and runs the offline Python regression suite without requiring a Kubernetes cluster. The regression suite also feeds a committed snapshot through a fake `kubectl` binary to verify the wrapper passes image, generation, and revision guards correctly. GitHub Actions runs this same target for pushes and pull requests. Use `make fixtures` when you want the scenario matrix summary without the full test suite.
+Run the same checks used by CI with `make verify`. This validates the shell wrapper, executes every committed fixture against its expected exit code and state, checks the OpenMetrics contract on a healthy snapshot and a policy-breach snapshot, and runs the offline Python regression suite without requiring a Kubernetes cluster. The regression suite also feeds a committed snapshot through a fake `kubectl` binary to verify the wrapper passes image, generation, and revision guards correctly. GitHub Actions runs this same target for pushes and pull requests. Use `make fixtures` when you want the scenario matrix summary without the full test suite.
 
 ## Check deployment health from a snapshot
 

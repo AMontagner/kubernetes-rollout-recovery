@@ -22,7 +22,12 @@ metrics:
 	output=$$(python3 rollout_status.py --metrics < fixtures/healthy.json); \
 	printf '%s\n' "$$output" | grep -Fx 'rollout_state_code 0' >/dev/null; \
 	printf '%s\n' "$$output" | grep -Fx 'rollout_generation_lag 0' >/dev/null; \
+	printf '%s\n' "$$output" | grep -Fx '# HELP rollout_ready_gap Desired replicas minus Ready replicas, clamped at zero.' >/dev/null; \
 	printf '%s\n' "$$output" | grep -Fx 'rollout_unavailable_replicas 0' >/dev/null; \
+	policy_code=0; policy_output=$$(python3 rollout_status.py --metrics --min-ready-replicas 2 --max-generation-lag 0 < fixtures/stale-generation.json) || policy_code=$$?; \
+	test "$$policy_code" -eq 6; \
+	printf '%s\n' "$$policy_output" | grep -Fx 'rollout_ready_guard_passed 0' >/dev/null; \
+	printf '%s\n' "$$policy_output" | grep -Fx 'rollout_generation_lag_guard_passed 0' >/dev/null; \
 	echo "metrics contract -> healthy"
 
 verify: lint-shell fixtures metrics test
