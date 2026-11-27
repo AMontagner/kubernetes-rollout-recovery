@@ -301,6 +301,47 @@ class RolloutStatusCLI(unittest.TestCase):
         self.assertEqual(result.stdout, "")
         self.assertIn("must be nonnegative", result.stderr)
 
+    def test_max_generation_lag_guard(self):
+        snapshot = {
+            "kind": "Deployment",
+            "metadata": {"generation": 4},
+            "spec": {"replicas": 1},
+            "status": {"observedGeneration": 2, "replicas": 1, "updatedReplicas": 1, "availableReplicas": 1},
+        }
+        for maximum, code, state, detail in (
+            (2, 1, "waiting", "latest generation"),
+            (1, 6, "observed_generation_mismatch", "generation lag 2, expected at most 1"),
+        ):
+            with self.subTest(maximum=maximum):
+                result = self.run_checker(json.dumps(snapshot), "--max-generation-lag", str(maximum), "--json")
+                report = json.loads(result.stdout)
+                self.assertEqual(result.returncode, code, result)
+                self.assertEqual(report["state"], state)
+                self.assertIn(detail, report["message"])
+
+        result = self.run_checker(json.dumps(snapshot), "--max-generation-lag", "-1", "--json")
+        self.assertEqual(result.returncode, 3, result)
+        self.assertEqual(result.stdout, "")
+        self.assertIn("must be nonnegative", result.stderr)
+
+    def test_wrapper_propagates_max_generation_lag_guard(self):
+        fixture = Path(__file__).with_name("fixtures") / "stale-generation.json"
+        with tempfile.TemporaryDirectory() as temp_dir:
+            kubectl = Path(temp_dir) / "kubectl"
+            kubectl.write_text(f"#!/bin/sh\ncat {shlex.quote(str(fixture))}\n")
+            kubectl.chmod(0o755)
+            environment = os.environ.copy()
+            environment["PATH"] = f"{temp_dir}{os.pathsep}{environment['PATH']}"
+            result = subprocess.run(
+                ["bash", str(WRAPPER), "rollout-recovery", "rollout-web", "web", "nginx:1.28-alpine", "8", "", "", "7", "", "0"],
+                cwd=CHECKER.parent, env=environment, text=True,
+                capture_output=True, timeout=5,
+            )
+            report = json.loads(result.stdout)
+            self.assertEqual(result.returncode, 6, result)
+            self.assertEqual(report["state"], "observed_generation_mismatch")
+            self.assertIn("expected at most 0", report["message"])
+
     def test_wrapper_propagates_min_ready_replicas_guard(self):
         fixture = Path(__file__).with_name("fixtures") / "rollback-verified.json"
         with tempfile.TemporaryDirectory() as temp_dir:

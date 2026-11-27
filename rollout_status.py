@@ -144,6 +144,7 @@ def main():
     parser.add_argument("--expect-generation", type=int, help="require an exact Deployment metadata.generation")
     parser.add_argument("--expect-observed-generation", type=int, help="require an exact controller-observed generation")
     parser.add_argument("--min-ready-replicas", type=int, help="require at least this many ready replicas")
+    parser.add_argument("--max-generation-lag", type=int, help="fail when metadata.generation exceeds observedGeneration by more than this")
     parser.add_argument("--expect-revision", help="require an exact Deployment revision annotation after recovery")
     parser.add_argument(
         "--expect-image", nargs=2, metavar=("CONTAINER", "IMAGE"),
@@ -155,6 +156,13 @@ def main():
         code, message = classify(deployment)
         revision = deployment_revision(deployment)
         status = deployment.get("status", {})
+        generation_lag = deployment["metadata"]["generation"] - status.get("observedGeneration", 0)
+        if args.max_generation_lag is not None:
+            if args.max_generation_lag < 0:
+                raise ValueError("--max-generation-lag must be nonnegative")
+            if code in (0, 1) and generation_lag > args.max_generation_lag:
+                code = 6
+                message = f"generation lag {generation_lag}, expected at most {args.max_generation_lag}"
         if args.expect_generation is not None and deployment["metadata"]["generation"] != args.expect_generation:
             code = 1
             message = f"snapshot generation {deployment["metadata"]["generation"]}, expected {args.expect_generation}"
