@@ -296,6 +296,8 @@ class RolloutStatusCLI(unittest.TestCase):
                 self.assertEqual(report["state"], state)
                 self.assertIn(detail, report["message"])
                 self.assertEqual(report["details"]["verification"]["ready_guard_passed"], minimum <= 1)
+                self.assertEqual(report["details"]["policy"]["min_ready_replicas"], minimum)
+                self.assertIsNone(report["details"]["policy"]["max_generation_lag"])
 
         result = self.run_checker(json.dumps(snapshot), "--min-ready-replicas", "-1", "--json")
         self.assertEqual(result.returncode, 3, result)
@@ -320,6 +322,8 @@ class RolloutStatusCLI(unittest.TestCase):
                 self.assertEqual(report["state"], state)
                 self.assertIn(detail, report["message"])
                 self.assertEqual(report["details"]["verification"]["generation_lag_guard_passed"], maximum >= 2)
+                self.assertEqual(report["details"]["policy"]["max_generation_lag"], maximum)
+                self.assertIsNone(report["details"]["policy"]["min_ready_replicas"])
 
         result = self.run_checker(json.dumps(snapshot), "--max-generation-lag", "-1", "--json")
         self.assertEqual(result.returncode, 3, result)
@@ -481,6 +485,7 @@ class RolloutStatusCLI(unittest.TestCase):
                 self.assertIsNone(verification["revision_guard_passed"])
                 self.assertIsNone(verification["ready_guard_passed"])
                 self.assertIsNone(verification["generation_lag_guard_passed"])
+                self.assertEqual(report["details"]["policy"], {"min_ready_replicas": None, "max_generation_lag": None})
 
         malformed = self.run_checker("{", "--json")
         self.assertEqual(malformed.returncode, 3)

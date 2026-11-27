@@ -218,6 +218,10 @@ def main():
                 desired - status.get("readyReplicas", status.get("availableReplicas", 0)),
                 0,
             ),
+            "policy": {
+                "min_ready_replicas": args.min_ready_replicas,
+                "max_generation_lag": args.max_generation_lag,
+            },
             "updated_replicas": status.get("updatedReplicas", 0),
             "unavailable_replicas": status.get("unavailableReplicas", 0),
             "deployment_revision": revision,
