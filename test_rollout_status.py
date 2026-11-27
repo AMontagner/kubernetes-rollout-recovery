@@ -272,6 +272,53 @@ class RolloutStatusCLI(unittest.TestCase):
                 self.assertEqual(report["state"], state)
                 self.assertIn(detail, report["recommended_action"] if code == 0 else report["message"])
 
+    def test_min_ready_replicas_guard(self):
+        snapshot = {
+            "kind": "Deployment",
+            "metadata": {"generation": 4},
+            "spec": {"replicas": 2},
+            "status": {
+                "observedGeneration": 4,
+                "replicas": 2,
+                "updatedReplicas": 2,
+                "availableReplicas": 2,
+                "readyReplicas": 1,
+            },
+        }
+        for minimum, code, state, detail in (
+            (1, 0, "complete", "rollout complete"),
+            (2, 1, "waiting", "ready replicas 1, expected at least 2"),
+        ):
+            with self.subTest(minimum=minimum):
+                result = self.run_checker(json.dumps(snapshot), "--min-ready-replicas", str(minimum), "--json")
+                report = json.loads(result.stdout)
+                self.assertEqual(result.returncode, code, result)
+                self.assertEqual(report["state"], state)
+                self.assertIn(detail, report["message"])
+
+        result = self.run_checker(json.dumps(snapshot), "--min-ready-replicas", "-1", "--json")
+        self.assertEqual(result.returncode, 3, result)
+        self.assertEqual(result.stdout, "")
+        self.assertIn("must be nonnegative", result.stderr)
+
+    def test_wrapper_propagates_min_ready_replicas_guard(self):
+        fixture = Path(__file__).with_name("fixtures") / "rollback-verified.json"
+        with tempfile.TemporaryDirectory() as temp_dir:
+            kubectl = Path(temp_dir) / "kubectl"
+            kubectl.write_text(f"#!/bin/sh\ncat {shlex.quote(str(fixture))}\n")
+            kubectl.chmod(0o755)
+            environment = os.environ.copy()
+            environment["PATH"] = f"{temp_dir}{os.pathsep}{environment['PATH']}"
+            result = subprocess.run(
+                ["bash", str(WRAPPER), "rollout-recovery", "rollout-web", "web", "nginx:1.28-alpine", "4", "7", "", "4", "2"],
+                cwd=CHECKER.parent, env=environment, text=True,
+                capture_output=True, timeout=5,
+            )
+            report = json.loads(result.stdout)
+            self.assertEqual(result.returncode, 1, result)
+            self.assertEqual(report["state"], "waiting")
+            self.assertIn("expected at least 2", report["message"])
+
     def test_verify_rollback_revision(self):
         snapshot = {
             "kind": "Deployment",

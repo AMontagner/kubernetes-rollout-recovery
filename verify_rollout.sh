@@ -9,6 +9,7 @@ expected_generation=${5:-}
 expected_revision=${6:-}
 evidence_path=${7:-}
 expected_observed_generation=${8:-}
+min_ready_replicas=${9:-}
 
 snapshot=$(mktemp)
 capture_error=$(mktemp)
@@ -32,5 +33,8 @@ if [[ -n "$expected_revision" ]]; then
 fi
 if [[ -n "$expected_observed_generation" ]]; then
   checker_args+=(--expect-observed-generation "$expected_observed_generation")
+fi
+if [[ -n "$min_ready_replicas" ]]; then
+  checker_args+=(--min-ready-replicas "$min_ready_replicas")
 fi
 python3 rollout_status.py "${checker_args[@]}" <"$snapshot"

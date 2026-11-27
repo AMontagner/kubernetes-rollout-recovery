@@ -40,7 +40,7 @@ kubectl -n rollout-recovery get deployment rollout-web -o json > deployment-snap
   python3 rollout_status.py --json --expect-image web nginx:1.28-alpine --expect-revision 7 < deployment-snapshot.json
 ```
 
-A recovered deployment reports `"state": "complete"` and exits 0. If the rollout is healthy but the named container is missing or specifies a different image, the check reports `image_mismatch` and exits 4. If the revision annotation differs, it reports `revision_mismatch` and exits 5. Together these checks verify both the image reference and the Deployment revision reached after rollback. Use an image digest when you need immutable version identification.
+A recovered deployment reports `"state": "complete"` and exits 0. If the rollout is healthy but the named container is missing or specifies a different image, the check reports `image_mismatch` and exits 4. If the revision annotation differs, it reports `revision_mismatch` and exits 5. Together these checks verify both the image reference and the Deployment revision reached after rollback. Use `--min-ready-replicas N` when recovery must prove a readiness floor; a complete snapshot below that threshold returns waiting (1) with the observed and expected counts. Use an image digest when you need immutable version identification.
 
 For repeatable CI or incident checks, use the wrapper below. It fails fast if `kubectl` cannot capture the Deployment or if the recovered image does not match.
 
@@ -48,7 +48,7 @@ For repeatable CI or incident checks, use the wrapper below. It fails fast if `k
 ./verify_rollout.sh rollout-recovery rollout-web web nginx:1.28-alpine 2 7 incident/deployment.json 2
 ```
 
-The optional seventh wrapper argument is an evidence path and the eighth is the expected controller-observed generation. When supplied, the exact Deployment JSON captured before verification is copied there even if an image or revision guard fails, while the observed-generation guard proves the controller acknowledged the intended update:
+The optional seventh wrapper argument is an evidence path, the eighth is the expected controller-observed generation, and the ninth is a minimum ready-replica threshold. When supplied, the exact Deployment JSON captured before verification is copied there even if an image, revision, or readiness guard fails; the observed-generation guard proves the controller acknowledged the intended update and the readiness guard proves enough Pods are ready:
 
 ```sh
 ./verify_rollout.sh rollout-recovery rollout-web web nginx:1.28-alpine 2 7 incident/deployment.json 2

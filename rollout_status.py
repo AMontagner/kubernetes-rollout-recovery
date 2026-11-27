@@ -143,6 +143,7 @@ def main():
     output.add_argument("--metrics", action="store_true", help="emit OpenMetrics-style gauges on stdout")
     parser.add_argument("--expect-generation", type=int, help="require an exact Deployment metadata.generation")
     parser.add_argument("--expect-observed-generation", type=int, help="require an exact controller-observed generation")
+    parser.add_argument("--min-ready-replicas", type=int, help="require at least this many ready replicas")
     parser.add_argument("--expect-revision", help="require an exact Deployment revision annotation after recovery")
     parser.add_argument(
         "--expect-image", nargs=2, metavar=("CONTAINER", "IMAGE"),
@@ -176,6 +177,13 @@ def main():
         if code == 0 and args.expect_revision is not None and revision != args.expect_revision:
             code = 5
             message = f"deployment revision {revision}, expected {args.expect_revision}"
+        if args.min_ready_replicas is not None:
+            if args.min_ready_replicas < 0:
+                raise ValueError("--min-ready-replicas must be nonnegative")
+            ready = status.get("readyReplicas", status.get("availableReplicas", 0))
+            if code == 0 and ready < args.min_ready_replicas:
+                code = 1
+                message = f"ready replicas {ready}, expected at least {args.min_ready_replicas}"
     except (ValueError, KeyError, TypeError, AttributeError) as error:
         print(f"invalid Deployment snapshot: {error}", file=sys.stderr)
         return 3
