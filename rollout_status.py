@@ -51,6 +51,12 @@ def classify(deployment):
         nonnegative_integer(status.get(field, 0), f"status.{field}")
         for field in ("updatedReplicas", "replicas", "availableReplicas")
     ]
+    # Older snapshots may omit readyReplicas; availableReplicas is the
+    # compatibility fallback while still validating the field when present.
+    nonnegative_integer(
+        status.get("readyReplicas", status.get("availableReplicas", 0)),
+        "status.readyReplicas",
+    )
     unavailable = nonnegative_integer(status.get("unavailableReplicas", 0), "status.unavailableReplicas")
     if observed < generation:
         return 1, "waiting for controller to observe the latest generation"
@@ -104,6 +110,7 @@ def metrics_report(code, deployment):
         "rollout_generation_lag": generation - observed,
         "rollout_desired_replicas": deployment["spec"].get("replicas", 1),
         "rollout_available_replicas": status.get("availableReplicas", 0),
+        "rollout_ready_replicas": status.get("readyReplicas", status.get("availableReplicas", 0)),
         "rollout_updated_replicas": status.get("updatedReplicas", 0),
         "rollout_unavailable_replicas": status.get("unavailableReplicas", 0),
     }
@@ -181,6 +188,7 @@ def main():
             "observed_generation": status.get("observedGeneration", 0),
             "generation_lag": deployment["metadata"]["generation"] - status.get("observedGeneration", 0),
             "available_replicas": status.get("availableReplicas", 0),
+            "ready_replicas": status.get("readyReplicas", status.get("availableReplicas", 0)),
             "updated_replicas": status.get("updatedReplicas", 0),
             "unavailable_replicas": status.get("unavailableReplicas", 0),
             "deployment_revision": revision,

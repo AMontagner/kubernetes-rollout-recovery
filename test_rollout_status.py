@@ -405,6 +405,7 @@ class RolloutStatusCLI(unittest.TestCase):
                 "replicas": 2,
                 "updatedReplicas": 2,
                 "availableReplicas": 2,
+                "readyReplicas": 1,
                 "unavailableReplicas": 0,
             },
         }
@@ -417,7 +418,43 @@ class RolloutStatusCLI(unittest.TestCase):
         self.assertIn("rollout_generation_lag 0", result.stdout)
         self.assertIn("rollout_desired_replicas 2", result.stdout)
         self.assertIn("rollout_available_replicas 2", result.stdout)
+        self.assertIn("rollout_ready_replicas 1", result.stdout)
         self.assertIn("rollout_unavailable_replicas 0", result.stdout)
+
+    def test_ready_replica_detail_and_backward_compatibility(self):
+        snapshot = {
+            "kind": "Deployment",
+            "metadata": {"generation": 4},
+            "spec": {"replicas": 2},
+            "status": {
+                "observedGeneration": 4,
+                "replicas": 2,
+                "updatedReplicas": 2,
+                "availableReplicas": 2,
+                "readyReplicas": 1,
+            },
+        }
+        result = self.run_checker(json.dumps(snapshot), "--json")
+        self.assertEqual(result.returncode, 0, result)
+        self.assertEqual(json.loads(result.stdout)["details"]["ready_replicas"], 1)
+
+        legacy = dict(snapshot)
+        legacy["status"] = {key: value for key, value in snapshot["status"].items() if key != "readyReplicas"}
+        result = self.run_checker(json.dumps(legacy), "--json")
+        self.assertEqual(result.returncode, 0, result)
+        self.assertEqual(json.loads(result.stdout)["details"]["ready_replicas"], 2)
+
+    def test_invalid_ready_replica_count(self):
+        snapshot = {
+            "kind": "Deployment",
+            "metadata": {"generation": 2},
+            "spec": {"replicas": 1},
+            "status": {"observedGeneration": 2, "readyReplicas": "1"},
+        }
+        result = self.run_checker(json.dumps(snapshot), "--json")
+        self.assertEqual(result.returncode, 3, result)
+        self.assertEqual(result.stdout, "")
+        self.assertIn("status.readyReplicas", result.stderr)
 
     def test_observed_generation_cannot_exceed_metadata_generation(self):
         snapshot = {
