@@ -86,6 +86,7 @@ class RolloutStatusCLI(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result)
         self.assertEqual(report["state"], "complete")
         self.assertEqual(report["details"]["deployment_revision"], "7")
+        self.assertEqual(report["details"]["container_images"], {"web": "nginx:1.28-alpine"})
         self.assertIn("rollout complete", report["message"])
 
     def test_wrapper_propagates_rollback_guards(self):
@@ -488,6 +489,7 @@ class RolloutStatusCLI(unittest.TestCase):
                 self.assertIsNone(verification["ready_guard_passed"])
                 self.assertIsNone(verification["generation_lag_guard_passed"])
                 self.assertEqual(report["details"]["policy"], {"min_ready_replicas": None, "max_generation_lag": None})
+                self.assertEqual(report["details"]["container_images"], {})
                 summary = report["details"]["condition_summary"]
                 self.assertEqual(summary["available_false"], sum(
                     condition.get("type") == "Available" and condition.get("status") == "False"

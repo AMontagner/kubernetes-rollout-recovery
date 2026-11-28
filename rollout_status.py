@@ -46,6 +46,24 @@ def condition_summary(conditions):
     }
 
 
+def container_images(deployment):
+    containers = (
+        deployment.get("spec", {})
+        .get("template", {})
+        .get("spec", {})
+        .get("containers", [])
+    )
+    if type(containers) is not list:
+        return {}
+    return {
+        container.get("name"): container.get("image")
+        for container in containers
+        if type(container) is dict
+        and type(container.get("name")) is str
+        and type(container.get("image")) is str
+    }
+
+
 def deployment_revision(deployment):
     annotations = deployment["metadata"].get("annotations", {})
     if type(annotations) is not dict:
@@ -271,6 +289,7 @@ def main():
             "updated_replicas": status.get("updatedReplicas", 0),
             "unavailable_replicas": status.get("unavailableReplicas", 0),
             "deployment_revision": revision,
+            "container_images": container_images(deployment),
             "condition_summary": condition_summary(conditions),
             "verification": {
                 "generation_converged": deployment["metadata"]["generation"] == status.get("observedGeneration", 0),
