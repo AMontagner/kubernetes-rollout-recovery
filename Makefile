@@ -1,4 +1,4 @@
-.PHONY: test lint-shell fixtures metrics schema verify
+.PHONY: test lint-shell fixtures metrics schema alerts verify
 
 test:
 	python3 -m unittest -v
@@ -37,6 +37,10 @@ metrics:
 schema:
 	@python3 -c 'import json; s=json.load(open("report.schema.json")); assert s["$$schema"].endswith("/schema"); assert s["properties"]["schema_version"]["const"] == 1; assert set(("schema_version", "state", "severity", "exit_code", "message", "recommended_action", "details")) <= set(s["required"]); print("report schema contract -> valid")'
 
-verify: lint-shell fixtures metrics schema test
+alerts:
+	@set -eu; file=observability/rollout-alerts.yaml; test -s "$$file"; for alert in RolloutRecoveryCritical RolloutControllerConvergenceBreached RolloutUnavailableBudgetBreached RolloutReadinessBudgetBreached; do grep -Fx "      - alert: $$alert" "$$file" >/dev/null; done; for expression in 'rollout_severity_info{severity="critical"} == 1' 'rollout_generation_lag_guard_passed == 0' 'rollout_unavailable_guard_passed == 0' 'rollout_ready_guard_passed == 0'; do grep -F "expr: $$expression" "$$file" >/dev/null; done; echo "alert rules contract -> valid"
+
+verify: lint-shell fixtures metrics schema alerts test
+
 
 

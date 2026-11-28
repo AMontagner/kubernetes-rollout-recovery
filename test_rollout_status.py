@@ -598,6 +598,24 @@ class RolloutStatusCLI(unittest.TestCase):
         self.assertTrue(set(schema["required"]) <= set(report))
         self.assertTrue(set(schema["properties"]["details"]["required"]) <= set(report["details"]))
 
+    def test_alert_rules_contract(self):
+        rules = Path(__file__).with_name("observability") / "rollout-alerts.yaml"
+        content = rules.read_text()
+        for alert in (
+            "RolloutRecoveryCritical",
+            "RolloutControllerConvergenceBreached",
+            "RolloutUnavailableBudgetBreached",
+            "RolloutReadinessBudgetBreached",
+        ):
+            self.assertIn(f"      - alert: {alert}", content)
+        for expression in (
+            'rollout_severity_info{severity="critical"} == 1',
+            "rollout_generation_lag_guard_passed == 0",
+            "rollout_unavailable_guard_passed == 0",
+            "rollout_ready_guard_passed == 0",
+        ):
+            self.assertIn(f"        expr: {expression}", content)
+
     def test_metrics_contract(self):
         snapshot = {
             "kind": "Deployment",
@@ -756,6 +774,7 @@ class RolloutStatusCLI(unittest.TestCase):
         result = self.run_checker(json.dumps(snapshot), "--json")
         self.assertEqual(result.returncode, 0, result)
         self.assertEqual(json.loads(result.stdout)["state"], "complete")
+
 
 
 

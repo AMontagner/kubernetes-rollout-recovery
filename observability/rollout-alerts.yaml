@@ -1,0 +1,36 @@
+groups:
+  - name: rollout-recovery
+    rules:
+      - alert: RolloutRecoveryCritical
+        expr: rollout_severity_info{severity="critical"} == 1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: Kubernetes rollout recovery requires intervention
+          description: The rollout checker reports a stalled or rollback-identity failure.
+      - alert: RolloutControllerConvergenceBreached
+        expr: rollout_generation_lag_guard_passed == 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: Kubernetes controller has not converged on the rollout generation
+          description: The observed generation is outside the configured convergence budget.
+      - alert: RolloutUnavailableBudgetBreached
+        expr: rollout_unavailable_guard_passed == 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: Kubernetes rollout exceeds its unavailable replica budget
+          description: Unavailable replicas exceed the recovery policy threshold.
+      - alert: RolloutReadinessBudgetBreached
+        expr: rollout_ready_guard_passed == 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: Kubernetes rollout is below its readiness budget
+          description: Ready replicas are below the configured recovery threshold.
+
