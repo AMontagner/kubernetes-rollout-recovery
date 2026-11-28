@@ -585,6 +585,19 @@ class RolloutStatusCLI(unittest.TestCase):
                 self.assertEqual(result.returncode, code, result)
                 self.assertEqual(report["severity"], severity)
 
+    def test_report_schema_contract(self):
+        schema = json.loads(Path(__file__).with_name("report.schema.json").read_text())
+        self.assertEqual(schema["$schema"], "https://json-schema.org/draft/2020-12/schema")
+        self.assertEqual(schema["properties"]["schema_version"], {"const": 1})
+        fixture = Path(__file__).with_name("fixtures") / "rollback-verified.json"
+        result = self.run_checker(
+            fixture.read_text(), "--json", "--expect-image", "web", "nginx:1.28-alpine", "--expect-revision", "7"
+        )
+        report = json.loads(result.stdout)
+        self.assertEqual(result.returncode, 0, result)
+        self.assertTrue(set(schema["required"]) <= set(report))
+        self.assertTrue(set(schema["properties"]["details"]["required"]) <= set(report["details"]))
+
     def test_metrics_contract(self):
         snapshot = {
             "kind": "Deployment",
@@ -743,6 +756,7 @@ class RolloutStatusCLI(unittest.TestCase):
         result = self.run_checker(json.dumps(snapshot), "--json")
         self.assertEqual(result.returncode, 0, result)
         self.assertEqual(json.loads(result.stdout)["state"], "complete")
+
 
 
 

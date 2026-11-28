@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/AMontagner/kubernetes-rollout-recovery/report.schema.json",
+  "title": "Kubernetes rollout evidence report",
+  "description": "Machine-readable contract emitted by rollout_status.py --json.",
+  "type": "object",
+  "required": ["schema_version", "state", "severity", "exit_code", "message", "recommended_action", "details"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "state": {"enum": ["complete", "waiting", "stalled", "image_mismatch", "revision_mismatch", "observed_generation_mismatch"]},
+    "severity": {"enum": ["info", "warning", "critical"]},
+    "exit_code": {"enum": [0, 1, 2, 4, 5, 6]},
+    "message": {"type": "string"},
+    "recommended_action": {"type": "string"},
+    "details": {
+      "type": "object",
+      "required": ["desired_replicas", "deployment_generation", "observed_generation", "generation_lag", "available_replicas", "ready_replicas", "ready_gap", "policy", "updated_replicas", "unavailable_replicas", "deployment_revision", "container_images", "snapshot_sha256", "condition_summary", "verification", "conditions"],
+      "properties": {
+        "snapshot_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "policy": {"type": "object", "required": ["min_ready_replicas", "max_generation_lag", "max_unavailable_replicas"]},
+        "verification": {"type": "object"},
+        "conditions": {"type": "array", "items": {"type": "object"}}
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}
+

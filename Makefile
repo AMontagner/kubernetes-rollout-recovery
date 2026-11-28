@@ -1,4 +1,4 @@
-.PHONY: test lint-shell fixtures metrics verify
+.PHONY: test lint-shell fixtures metrics schema verify
 
 test:
 	python3 -m unittest -v
@@ -34,5 +34,9 @@ metrics:
 	printf '%s\n' "$$impact_output" | grep -Fx 'rollout_unavailable_guard_passed 0' >/dev/null; \
 	echo "metrics contract -> healthy"
 
-verify: lint-shell fixtures metrics test
+schema:
+	@python3 -c 'import json; s=json.load(open("report.schema.json")); assert s["$$schema"].endswith("/schema"); assert s["properties"]["schema_version"]["const"] == 1; assert set(("schema_version", "state", "severity", "exit_code", "message", "recommended_action", "details")) <= set(s["required"]); print("report schema contract -> valid")'
+
+verify: lint-shell fixtures metrics schema test
+
 
