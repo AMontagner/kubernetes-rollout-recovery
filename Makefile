@@ -28,6 +28,11 @@ metrics:
 	test "$$policy_code" -eq 6; \
 	printf '%s\n' "$$policy_output" | grep -Fx 'rollout_ready_guard_passed 0' >/dev/null; \
 	printf '%s\n' "$$policy_output" | grep -Fx 'rollout_generation_lag_guard_passed 0' >/dev/null; \
+	printf '%s\n' "$$policy_output" | grep -Fx 'rollout_unavailable_guard_passed -1' >/dev/null; \
+	impact_code=0; impact_output=$$(python3 rollout_status.py --metrics --max-unavailable-replicas 0 < fixtures/waiting-unavailable.json) || impact_code=$$?; \
+	test "$$impact_code" -eq 1; \
+	printf '%s\n' "$$impact_output" | grep -Fx 'rollout_unavailable_guard_passed 0' >/dev/null; \
 	echo "metrics contract -> healthy"
 
 verify: lint-shell fixtures metrics test
+

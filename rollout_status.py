@@ -149,11 +149,18 @@ def recommended_action(code):
     }[code]
 
 
-def metrics_report(code, deployment, min_ready_replicas=None, max_generation_lag=None):
+def metrics_report(
+    code,
+    deployment,
+    min_ready_replicas=None,
+    max_generation_lag=None,
+    max_unavailable_replicas=None,
+):
     status = deployment.get("status", {})
     generation = deployment["metadata"]["generation"]
     observed = status.get("observedGeneration", 0)
     ready = status.get("readyReplicas", status.get("availableReplicas", 0))
+    unavailable = status.get("unavailableReplicas", 0)
     generation_lag = generation - observed
     summary = condition_summary(status.get("conditions", []))
     values = {
@@ -172,6 +179,8 @@ def metrics_report(code, deployment, min_ready_replicas=None, max_generation_lag
         "rollout_ready_guard_passed": -1 if min_ready_replicas is None else int(ready >= min_ready_replicas),
         "rollout_max_generation_lag": -1 if max_generation_lag is None else max_generation_lag,
         "rollout_generation_lag_guard_passed": -1 if max_generation_lag is None else int(generation_lag <= max_generation_lag),
+        "rollout_max_unavailable_replicas": -1 if max_unavailable_replicas is None else max_unavailable_replicas,
+        "rollout_unavailable_guard_passed": -1 if max_unavailable_replicas is None else int(unavailable <= max_unavailable_replicas),
         "rollout_available_condition_false": summary["available_false"],
         "rollout_replica_failure_true": summary["replica_failure_true"],
         "rollout_progress_deadline_exceeded": summary["progress_deadline_exceeded"],
@@ -204,6 +213,8 @@ def metrics_report(code, deployment, min_ready_replicas=None, max_generation_lag
         "rollout_progress_deadline_exceeded": "Count of ProgressDeadlineExceeded conditions.",
         "rollout_updated_replicas": "Deployment replicas updated to the current template.",
         "rollout_unavailable_replicas": "Deployment replicas currently unavailable.",
+        "rollout_max_unavailable_replicas": "Configured maximum unavailable replica policy, or -1 when unset.",
+        "rollout_unavailable_guard_passed": "Maximum unavailable replica guard result: 1 pass, 0 fail, -1 unset.",
     }
     for name, value in values.items():
         if name != "rollout_state_code":
@@ -221,6 +232,7 @@ def main():
     parser.add_argument("--expect-observed-generation", type=int, help="require an exact controller-observed generation")
     parser.add_argument("--min-ready-replicas", type=int, help="require at least this many ready replicas")
     parser.add_argument("--max-generation-lag", type=int, help="fail when metadata.generation exceeds observedGeneration by more than this")
+    parser.add_argument("--max-unavailable-replicas", type=int, help="require no more than this many unavailable replicas")
     parser.add_argument("--expect-revision", help="require an exact Deployment revision annotation after recovery")
     parser.add_argument(
         "--expect-image", nargs=2, metavar=("CONTAINER", "IMAGE"),
@@ -229,6 +241,7 @@ def main():
     args = parser.parse_args()
     ready_guard_passed = None
     generation_lag_guard_passed = None
+    unavailable_guard_passed = None
     try:
         deployment = json.load(sys.stdin)
         code, message = classify(deployment)
@@ -272,11 +285,19 @@ def main():
             if code == 0 and ready < args.min_ready_replicas:
                 code = 1
                 message = f"ready replicas {ready}, expected at least {args.min_ready_replicas}"
+        if args.max_unavailable_replicas is not None:
+            if args.max_unavailable_replicas < 0:
+                raise ValueError("--max-unavailable-replicas must be nonnegative")
+            unavailable = status.get("unavailableReplicas", 0)
+            unavailable_guard_passed = unavailable <= args.max_unavailable_replicas
+            if code in (0, 1) and unavailable > args.max_unavailable_replicas:
+                code = 1
+                message = f"unavailable replicas {unavailable}, expected at most {args.max_unavailable_replicas}"
     except (ValueError, KeyError, TypeError, AttributeError) as error:
         print(f"invalid Deployment snapshot: {error}", file=sys.stderr)
         return 3
     if args.metrics:
-        print(metrics_report(code, deployment, args.min_ready_replicas, args.max_generation_lag))
+        print(metrics_report(code, deployment, args.min_ready_replicas, args.max_generation_lag, args.max_unavailable_replicas))
     elif args.json:
         state = STATE_NAMES[code]
         desired = deployment["spec"].get("replicas", 1)
@@ -297,6 +318,7 @@ def main():
             "policy": {
                 "min_ready_replicas": args.min_ready_replicas,
                 "max_generation_lag": args.max_generation_lag,
+                "max_unavailable_replicas": args.max_unavailable_replicas,
             },
             "updated_replicas": status.get("updatedReplicas", 0),
             "unavailable_replicas": status.get("unavailableReplicas", 0),
@@ -323,6 +345,7 @@ def main():
                 "revision_guard_passed": revision_guard_passed,
                 "ready_guard_passed": ready_guard_passed,
                 "generation_lag_guard_passed": generation_lag_guard_passed,
+                "unavailable_guard_passed": unavailable_guard_passed,
             },
             "conditions": [
                 {key: condition.get(key) for key in ("type", "status", "reason", "message", "lastUpdateTime", "lastTransitionTime") if condition.get(key) is not None}
@@ -344,4 +367,5 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
+
 

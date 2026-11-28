@@ -11,6 +11,7 @@ evidence_path=${7:-}
 expected_observed_generation=${8:-}
 min_ready_replicas=${9:-}
 max_generation_lag=${10:-}
+max_unavailable_replicas=${11:-}
 
 snapshot=$(mktemp)
 capture_error=$(mktemp)
@@ -41,4 +42,8 @@ fi
 if [[ -n "$max_generation_lag" ]]; then
   checker_args+=(--max-generation-lag "$max_generation_lag")
 fi
+if [[ -n "$max_unavailable_replicas" ]]; then
+  checker_args+=(--max-unavailable-replicas "$max_unavailable_replicas")
+fi
 python3 rollout_status.py "${checker_args[@]}" <"$snapshot"
+

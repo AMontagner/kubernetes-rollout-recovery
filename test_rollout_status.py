@@ -358,6 +358,39 @@ class RolloutStatusCLI(unittest.TestCase):
             self.assertEqual(report["state"], "observed_generation_mismatch")
             self.assertIn("expected at most 0", report["message"])
 
+    def test_max_unavailable_replicas_guard(self):
+        snapshot = {
+            "kind": "Deployment",
+            "metadata": {"generation": 4},
+            "spec": {"replicas": 2},
+            "status": {
+                "observedGeneration": 4,
+                "replicas": 2,
+                "updatedReplicas": 2,
+                "availableReplicas": 1,
+                "unavailableReplicas": 1,
+            },
+        }
+        for maximum, passed, detail in (
+            (1, True, "waiting for 1 unavailable replica to recover"),
+            (0, False, "unavailable replicas 1, expected at most 0"),
+        ):
+            with self.subTest(maximum=maximum):
+                result = self.run_checker(
+                    json.dumps(snapshot), "--max-unavailable-replicas", str(maximum), "--json"
+                )
+                report = json.loads(result.stdout)
+                self.assertEqual(result.returncode, 1, result)
+                self.assertEqual(report["state"], "waiting")
+                self.assertIn(detail, report["message"])
+                self.assertEqual(report["details"]["verification"]["unavailable_guard_passed"], passed)
+                self.assertEqual(report["details"]["policy"]["max_unavailable_replicas"], maximum)
+
+        result = self.run_checker(json.dumps(snapshot), "--max-unavailable-replicas", "-1", "--json")
+        self.assertEqual(result.returncode, 3, result)
+        self.assertEqual(result.stdout, "")
+        self.assertIn("must be nonnegative", result.stderr)
+
     def test_wrapper_propagates_min_ready_replicas_guard(self):
         fixture = Path(__file__).with_name("fixtures") / "rollback-verified.json"
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -375,6 +408,25 @@ class RolloutStatusCLI(unittest.TestCase):
             self.assertEqual(result.returncode, 1, result)
             self.assertEqual(report["state"], "waiting")
             self.assertIn("expected at least 2", report["message"])
+
+    def test_wrapper_propagates_max_unavailable_replicas_guard(self):
+        fixture = Path(__file__).with_name("fixtures") / "waiting-unavailable.json"
+        with tempfile.TemporaryDirectory() as temp_dir:
+            kubectl = Path(temp_dir) / "kubectl"
+            kubectl.write_text(f"#!/bin/sh\ncat {shlex.quote(str(fixture))}\n")
+            kubectl.chmod(0o755)
+            environment = os.environ.copy()
+            environment["PATH"] = f"{temp_dir}{os.pathsep}{environment['PATH']}"
+            result = subprocess.run(
+                ["bash", str(WRAPPER), "rollout-recovery", "rollout-web", "web", "nginx:1.28-alpine", "9", "", "", "", "", "", "0"],
+                cwd=CHECKER.parent, env=environment, text=True,
+                capture_output=True, timeout=5,
+            )
+            report = json.loads(result.stdout)
+            self.assertEqual(result.returncode, 1, result)
+            self.assertEqual(report["state"], "waiting")
+            self.assertIn("expected at most 0", report["message"])
+            self.assertFalse(report["details"]["verification"]["unavailable_guard_passed"])
 
     def test_verify_rollback_revision(self):
         snapshot = {
@@ -495,7 +547,12 @@ class RolloutStatusCLI(unittest.TestCase):
                 self.assertIsNone(verification["revision_guard_passed"])
                 self.assertIsNone(verification["ready_guard_passed"])
                 self.assertIsNone(verification["generation_lag_guard_passed"])
-                self.assertEqual(report["details"]["policy"], {"min_ready_replicas": None, "max_generation_lag": None})
+                self.assertIsNone(verification["unavailable_guard_passed"])
+                self.assertEqual(report["details"]["policy"], {
+                    "min_ready_replicas": None,
+                    "max_generation_lag": None,
+                    "max_unavailable_replicas": None,
+                })
                 self.assertEqual(report["details"]["container_images"], {})
                 fingerprint = report["details"]["snapshot_sha256"]
                 self.assertEqual(len(fingerprint), 64)
@@ -538,6 +595,8 @@ class RolloutStatusCLI(unittest.TestCase):
         self.assertIn("rollout_ready_gap 1", result.stdout)
         self.assertIn("rollout_ready_guard_passed -1", result.stdout)
         self.assertIn("rollout_generation_lag_guard_passed -1", result.stdout)
+        self.assertIn("rollout_max_unavailable_replicas -1", result.stdout)
+        self.assertIn("rollout_unavailable_guard_passed -1", result.stdout)
         self.assertIn("# HELP rollout_ready_gap Desired replicas minus Ready replicas, clamped at zero.", result.stdout)
         self.assertIn("rollout_available_condition_false 0", result.stdout)
         self.assertIn("rollout_replica_failure_true 0", result.stdout)
@@ -666,4 +725,5 @@ class RolloutStatusCLI(unittest.TestCase):
         result = self.run_checker(json.dumps(snapshot), "--json")
         self.assertEqual(result.returncode, 0, result)
         self.assertEqual(json.loads(result.stdout)["state"], "complete")
+
 
