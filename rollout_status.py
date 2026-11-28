@@ -1,5 +1,6 @@
 """Check a Kubernetes Deployment snapshot without cluster access."""
 import argparse
+import hashlib
 import json
 import sys
 
@@ -62,6 +63,17 @@ def container_images(deployment):
         and type(container.get("name")) is str
         and type(container.get("image")) is str
     }
+
+
+def evidence_fingerprint(deployment):
+    """Return a stable digest for correlating a report with its raw snapshot."""
+    canonical = json.dumps(
+        deployment,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=True,
+    )
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
 def deployment_revision(deployment):
@@ -290,6 +302,7 @@ def main():
             "unavailable_replicas": status.get("unavailableReplicas", 0),
             "deployment_revision": revision,
             "container_images": container_images(deployment),
+            "snapshot_sha256": evidence_fingerprint(deployment),
             "condition_summary": condition_summary(conditions),
             "verification": {
                 "generation_converged": deployment["metadata"]["generation"] == status.get("observedGeneration", 0),
@@ -331,3 +344,4 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
+

@@ -87,6 +87,13 @@ class RolloutStatusCLI(unittest.TestCase):
         self.assertEqual(report["state"], "complete")
         self.assertEqual(report["details"]["deployment_revision"], "7")
         self.assertEqual(report["details"]["container_images"], {"web": "nginx:1.28-alpine"})
+        fingerprint = report["details"]["snapshot_sha256"]
+        self.assertEqual(len(fingerprint), 64)
+        self.assertTrue(all(character in "0123456789abcdef" for character in fingerprint))
+        repeated = self.run_checker(
+            fixture.read_text(), "--json", "--expect-image", "web", "nginx:1.28-alpine", "--expect-revision", "7"
+        )
+        self.assertEqual(json.loads(repeated.stdout)["details"]["snapshot_sha256"], fingerprint)
         self.assertIn("rollout complete", report["message"])
 
     def test_wrapper_propagates_rollback_guards(self):
@@ -490,6 +497,9 @@ class RolloutStatusCLI(unittest.TestCase):
                 self.assertIsNone(verification["generation_lag_guard_passed"])
                 self.assertEqual(report["details"]["policy"], {"min_ready_replicas": None, "max_generation_lag": None})
                 self.assertEqual(report["details"]["container_images"], {})
+                fingerprint = report["details"]["snapshot_sha256"]
+                self.assertEqual(len(fingerprint), 64)
+                self.assertTrue(all(character in "0123456789abcdef" for character in fingerprint))
                 summary = report["details"]["condition_summary"]
                 self.assertEqual(summary["available_false"], sum(
                     condition.get("type") == "Available" and condition.get("status") == "False"
@@ -656,3 +666,4 @@ class RolloutStatusCLI(unittest.TestCase):
         result = self.run_checker(json.dumps(snapshot), "--json")
         self.assertEqual(result.returncode, 0, result)
         self.assertEqual(json.loads(result.stdout)["state"], "complete")
+
