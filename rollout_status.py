@@ -13,6 +13,14 @@ STATE_NAMES = {
     5: "revision_mismatch",
     6: "observed_generation_mismatch",
 }
+SEVERITY_NAMES = {
+    0: "info",
+    1: "warning",
+    2: "critical",
+    4: "critical",
+    5: "critical",
+    6: "warning",
+}
 REPORT_SCHEMA_VERSION = 1
 
 
@@ -149,6 +157,10 @@ def recommended_action(code):
     }[code]
 
 
+def severity_name(code):
+    return SEVERITY_NAMES[code]
+
+
 def metrics_report(
     code,
     deployment,
@@ -196,6 +208,9 @@ def metrics_report(
         "# HELP rollout_state_info Current rollout state as a readable label.",
         "# TYPE rollout_state_info gauge",
         f'rollout_state_info{{state="{state}"}} 1',
+        "# HELP rollout_severity_info Incident routing severity derived from the rollout result.",
+        "# TYPE rollout_severity_info gauge",
+        f'rollout_severity_info{{severity="{severity_name(code)}"}} 1',
     ])
     help_text = {
         "rollout_report_schema_version": "JSON and metrics report schema version.",
@@ -355,6 +370,7 @@ def main():
         print(json.dumps({
             "schema_version": REPORT_SCHEMA_VERSION,
             "state": state,
+            "severity": severity_name(code),
             "exit_code": code,
             "message": message,
             "recommended_action": recommended_action(code),
@@ -367,5 +383,6 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
+
 
 

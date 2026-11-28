@@ -515,6 +515,7 @@ class RolloutStatusCLI(unittest.TestCase):
                 report = json.loads(result.stdout)
                 self.assertEqual(report["schema_version"], 1)
                 self.assertEqual(report["state"], state)
+                self.assertEqual(report["severity"], {0: "info", 1: "warning", 2: "critical"}[code])
                 self.assertEqual(report["exit_code"], code)
                 self.assertIsInstance(report["message"], str)
                 actions = {
@@ -568,6 +569,22 @@ class RolloutStatusCLI(unittest.TestCase):
         self.assertEqual(malformed.stdout, "")
         self.assertIn("invalid Deployment snapshot", malformed.stderr)
 
+    def test_severity_routing_contract(self):
+        cases = (
+            ("healthy.json", (), 0, "info"),
+            ("stalled-replica-failure.json", (), 2, "critical"),
+            ("stale-generation.json", ("--expect-observed-generation", "6"), 6, "warning"),
+            ("rollback-verified.json", ("--expect-image", "web", "nginx:wrong"), 4, "critical"),
+            ("rollback-verified.json", ("--expect-revision", "6"), 5, "critical"),
+        )
+        for filename, args, code, severity in cases:
+            with self.subTest(filename=filename, args=args):
+                fixture = Path(__file__).with_name("fixtures") / filename
+                result = self.run_checker(fixture.read_text(), "--json", *args)
+                report = json.loads(result.stdout)
+                self.assertEqual(result.returncode, code, result)
+                self.assertEqual(report["severity"], severity)
+
     def test_metrics_contract(self):
         snapshot = {
             "kind": "Deployment",
@@ -588,6 +605,7 @@ class RolloutStatusCLI(unittest.TestCase):
         self.assertIn("rollout_report_schema_version 1", result.stdout)
         self.assertIn("rollout_state_code 0", result.stdout)
         self.assertIn('rollout_state_info{state="complete"} 1', result.stdout)
+        self.assertIn('rollout_severity_info{severity="info"} 1', result.stdout)
         self.assertIn("rollout_generation_lag 0", result.stdout)
         self.assertIn("rollout_desired_replicas 2", result.stdout)
         self.assertIn("rollout_available_replicas 2", result.stdout)
@@ -725,5 +743,6 @@ class RolloutStatusCLI(unittest.TestCase):
         result = self.run_checker(json.dumps(snapshot), "--json")
         self.assertEqual(result.returncode, 0, result)
         self.assertEqual(json.loads(result.stdout)["state"], "complete")
+
 
 
